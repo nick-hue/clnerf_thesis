@@ -159,27 +159,37 @@ class NeRFSystem(torch.nn.Module):
         from datasets.colmap_utils import read_cameras_binary
         camdata = read_cameras_binary(os.path.join(self.hparams.root_dir, 'sparse/0/cameras.bin'))
         
-        # h = int(camdata[1].height * self.downsample)
-        # w = int(camdata[1].width * self.downsample)
-        # self.img_wh = (w, h)
+        # Original width and height of the camera
+        original_w = camdata[1].width
+        original_h = camdata[1].height
         
+        # Compute scaling factors from original resolution to new resolution.
+        w_factor = original_w / w
+        h_factor = original_h / h
+
         self.img_wh = (w, h)
 
+        # Read the intrinsic parameters without applying any downsample
         if camdata[1].model == 'SIMPLE_RADIAL':
-            fx = fy = camdata[1].params[0] * self.downsample
-            cx = camdata[1].params[1] * self.downsample
-            cy = camdata[1].params[2] * self.downsample
+            original_fx = original_fy = camdata[1].params[0]
+            original_cx = camdata[1].params[1]
+            original_cy = camdata[1].params[2]
         elif camdata[1].model in ['PINHOLE', 'OPENCV']:
-            fx = camdata[1].params[0] * self.downsample
-            fy = camdata[1].params[1] * self.downsample
-            cx = camdata[1].params[2] * self.downsample
-            cy = camdata[1].params[3] * self.downsample
+            original_fx = camdata[1].params[0]
+            original_fy = camdata[1].params[1]
+            original_cx = camdata[1].params[2]
+            original_cy = camdata[1].params[3]
         else:
-            raise ValueError(
-                f"Please parse the intrinsics for camera model {camdata[1].model}!"
-            )
+            raise ValueError(f"Unsupported camera model: {camdata[1].model}")
+
+        # Scale the intrinsic parameters to adapt to the new resolution.
+        fx = original_fx * w_factor
+        fy = original_fy * h_factor
+        cx = original_cx * w_factor
+        cy = original_cy * h_factor
+
         self.K = torch.FloatTensor([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
-        self.directions = get_ray_directions(h, w, self.K)
+        self.directions = get_ray_directions(h, w, self.K, device=self.device)
         
 
 def write_experiment_log(output_dir, experiment_info):
@@ -339,7 +349,8 @@ def main():
     system = NeRFSystem(hparams).to('cuda' if torch.cuda.is_available() else 'cpu')
     # system.setup_from_test()  # Set up directions and intrinsics using the test dataset.
 
-    width, height = 1440, 1080
+    # width, height = 810, 1440
+    width, height = 1080, 1920
     system.setup_intrinsics(width, height)   # my own setup function in order to prevent test dataset loading...
     
     # Load checkpoint weights.

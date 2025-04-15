@@ -311,4 +311,5 @@ if __name__ == "__main__":
     
     print(type(cameras))
     print(len(cameras))
-    print(cameras)
+    print(cameras[1])
+    print(cameras[1].params[0])
