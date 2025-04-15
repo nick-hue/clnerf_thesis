@@ -334,10 +334,10 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
             elif key == 27:  # ESC, exit mode
                 break
             time.sleep(0.05)
-        return current_pose, frame_counter
+        return frame_counter
 
-    final_pose, num_frames_rendered = curses.wrapper(curses_loop)
-    return final_pose, num_frames_rendered
+    num_frames_rendered = curses.wrapper(curses_loop)
+    return num_frames_rendered
 
 def main():
     # Parse options and update hparams for rendering.
@@ -363,7 +363,7 @@ def main():
     starting_angle = 4.6
     radius = 1.5
     vertical_amplitude = 0 
-    move_step_size = 0.05
+    move_step_size = 0.1
     radius_step_size = 0.1
 
     initial_pose = get_starting_pose(starting_angle=starting_angle, radius=radius, center=np.array([0,0,0]), vertical_amplitude=vertical_amplitude)
@@ -381,7 +381,7 @@ def main():
 
     output_dir = make_dir(experiment_info)
     # Enter interactive mode to adjust the pose with keyboard controls.
-    final_pose, frames_rendered = interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), step_size=move_step_size, radius_step=radius_step_size)    
+    frames_rendered = interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), step_size=move_step_size, radius_step=radius_step_size)    
 
     experiment_info['Rendered Frames'] = frames_rendered
     write_experiment_log(output_dir, experiment_info)
