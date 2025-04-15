@@ -11,6 +11,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 import datetime
 import time  
 
+
 # Data and model imports from the repo
 from datasets.ray_utils import get_rays
 from models.networks import NGPGv2
@@ -101,10 +102,85 @@ class NeRFSystem(torch.nn.Module):
             'rep_dir': f'results/NGPGv2/CLNerf/{self.hparams.dataset_name}/{self.hparams.exp_name}/rep',
             'nerf_rep': self.hparams.nerf_rep
         }
+        # print('bef loading')
         test_dataset = dataset(split='test', **kwargs)
+        # print('after loading')
         self.directions = test_dataset.directions.to(self.device)
         self.img_wh = test_dataset.img_wh
 
+    def setup_intrinsics(self, w, h):
+        @torch.cuda.amp.autocast(dtype=torch.float32)
+        def get_ray_directions(H, W, K, device='cpu', random=False, return_uv=False, flatten=True, crop_region = 'full'):
+            """
+            Get ray directions for all pixels in camera coordinate [right down front].
+            Reference: https://www.scratchapixel.com/lessons/3d-basic-rendering/
+                    ray-tracing-generating-camera-rays/standard-coordinate-systems
+
+            Inputs:
+                H, W: image height and width
+                K: (3, 3) camera intrinsics
+                random: whether the ray passes randomly inside the pixel
+                return_uv: whether to return uv image coordinates
+
+            Outputs: (shape depends on @flatten)
+                directions: (H, W, 3) or (H*W, 3), the direction of the rays in camera coordinate
+                uv: (H, W, 2) or (H*W, 2) image coordinates
+            """
+            from kornia import create_meshgrid
+            grid = create_meshgrid(H, W, False, device=device)[0] # (H, W, 2)
+            u, v = grid.unbind(-1)
+
+            fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
+            if random:
+                directions = \
+                    torch.stack([(u-cx+torch.rand_like(u))/fx,
+                                (v-cy+torch.rand_like(v))/fy,
+                                torch.ones_like(u)], -1)
+            else: # pass by the center
+                directions = \
+                    torch.stack([(u-cx+0.5)/fx, (v-cy+0.5)/fy, torch.ones_like(u)], -1)
+            
+            if crop_region  == 'left':
+                directions = directions[:, :directions.shape[1]//2]
+
+            elif crop_region == 'right':
+                directions = directions[:, directions.shape[1]//2:]
+
+
+            if flatten:
+                directions = directions.reshape(-1, 3)
+                grid = grid.reshape(-1, 2)
+
+            if return_uv:
+                return directions, grid
+            return directions
+        
+        # Step 1: read and scale intrinsics (same for all images)
+        from datasets.colmap_utils import read_cameras_binary
+        camdata = read_cameras_binary(os.path.join(self.hparams.root_dir, 'sparse/0/cameras.bin'))
+        
+        # h = int(camdata[1].height * self.downsample)
+        # w = int(camdata[1].width * self.downsample)
+        # self.img_wh = (w, h)
+        
+        self.img_wh = (w, h)
+
+        if camdata[1].model == 'SIMPLE_RADIAL':
+            fx = fy = camdata[1].params[0] * self.downsample
+            cx = camdata[1].params[1] * self.downsample
+            cy = camdata[1].params[2] * self.downsample
+        elif camdata[1].model in ['PINHOLE', 'OPENCV']:
+            fx = camdata[1].params[0] * self.downsample
+            fy = camdata[1].params[1] * self.downsample
+            cx = camdata[1].params[2] * self.downsample
+            cy = camdata[1].params[3] * self.downsample
+        else:
+            raise ValueError(
+                f"Please parse the intrinsics for camera model {camdata[1].model}!"
+            )
+        self.K = torch.FloatTensor([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
+        self.directions = get_ray_directions(h, w, self.K)
+        
 
 def write_experiment_log(output_dir, experiment_info):
     """
@@ -194,7 +270,6 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
         stdscr.addstr(5, 0, f"Last key pressed: [{last_key_pressed}]")
         stdscr.refresh()
 
-
     def curses_loop(stdscr):
         nonlocal initial_pose
         curses.curs_set(0)  # hide cursor
@@ -204,6 +279,7 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
         current_pose = initial_pose.copy()
         last_key_pressed = ""
         last_frame_rendered = ""
+
         while True:
             display_text(stdscr=stdscr, current_pose=current_pose, frame_counter=frame_counter, last_key_pressed=last_key_pressed, frame_name=last_frame_rendered)
             
@@ -261,7 +337,10 @@ def main():
         raise ValueError("Please provide a checkpoint path using --weight_path.")
     
     system = NeRFSystem(hparams).to('cuda' if torch.cuda.is_available() else 'cpu')
-    system.setup_from_test()  # Set up directions and intrinsics using the test dataset.
+    # system.setup_from_test()  # Set up directions and intrinsics using the test dataset.
+
+    width, height = 1440, 1080
+    system.setup_intrinsics(width, height)   # my own setup function in order to prevent test dataset loading...
     
     # Load checkpoint weights.
     load_ckpt(system.model, hparams.weight_path)
