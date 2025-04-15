@@ -190,6 +190,7 @@ def render_frames(system, custom_poses, output_dir):
 
     print(f"{len(custom_poses)} frames successfully rendered at {output_dir}")
 
+
 def run_experiment(system, custom_poses, experiment_info):
     output_dir = make_dir(experiment_info)
     # Render frames from generated camera poses
