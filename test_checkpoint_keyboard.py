@@ -267,12 +267,12 @@ def run_experiment(system, custom_pose, experiment_info, output_dir):
     write_experiment_log(output_dir, experiment_info)
 
 
-def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), step_size=0.1, radius_step=0.1):
+def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), move_step=0.1, zoom_step=0.1):
     import curses
     # current_pose = initial_pose.copy()
     def display_text(stdscr, current_pose, frame_counter, last_key_pressed, frame_name=""):
         stdscr.clear()
-        stdscr.addstr(0, 0, "Interactive Mode: WASD to move; Up/Down adjust radius; ENTER to render frame; ESC to exit")
+        stdscr.addstr(0, 0, "Interactive Mode: WASD to move; Up/Down adjust zoom; ENTER to render frame from current pose; ESC to exit")
         stdscr.addstr(2, 0, f"Current position: {current_pose[:3, 3]}")
         # stdscr.addstr(3, 0, f"Radius: {}")
         stdscr.addstr(3, 0, f"Frames rendered this session: {frame_counter}")
@@ -289,6 +289,7 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
         current_pose        = initial_pose.copy()
         last_key_pressed    = ""
         last_frame_rendered = ""
+        digit_rounding = 3
 
         while True:
             # redraw status
@@ -307,28 +308,23 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
 
             # --- HORIZONTAL MOVEMENT ONLY ---
             if key == ord('w'):            # forward
-                current_pose[1,3] -= step_size
+                current_pose[1,3] = round(current_pose[1,3] - move_step, digit_rounding)
                 last_key_pressed = 'w'
             elif key == ord('s'):          # backward
-                current_pose[1,3] += step_size
+                current_pose[1,3] = round(current_pose[1,3] + move_step, digit_rounding)
                 last_key_pressed = 's'
             elif key == ord('a'):          # left
-                r = current_pose[:3,0].copy()
-                r[1] = 0
-                r /= np.linalg.norm(r)
-                current_pose[:3,3] -= step_size * r
+                current_pose[0,3] = round(current_pose[0,3] - move_step, digit_rounding)
                 last_key_pressed = 'a'
-
             elif key == ord('d'):          # right
-                r = current_pose[:3,0].copy()
-                r[1] = 0
-                r /= np.linalg.norm(r)
-                current_pose[:3,3] += step_size * r
-                last_key_pressed = 'd'
-
-            # --- VERTICAL MOVEMENT ONLY ---
-            
-            # --- RENDER CURRENT FRAME ---
+                current_pose[0,3] = round(current_pose[0,3] + move_step, digit_rounding)
+                last_key_pressed = 'd'     
+            elif key == curses.KEY_UP:     # zoom in
+                current_pose[2,3] = round(current_pose[2,3] + zoom_step, digit_rounding)
+                last_key_pressed = '^'     
+            elif key == curses.KEY_DOWN:   # zoom out
+                current_pose[2,3] = round(current_pose[2,3] - zoom_step, digit_rounding)
+                last_key_pressed = 'v'
             elif key in (10, 13):          # ENTER
                 last_key_pressed = 'ENTER'
                 frame_counter += 1
@@ -378,7 +374,7 @@ def main():
     radius = 1.5
     vertical_amplitude = 0 
     move_step_size = 0.1
-    radius_step_size = 0.1
+    radius_step_size = 0.05
 
     initial_pose = get_starting_pose(starting_angle=starting_angle, radius=radius, center=np.array([0,0,0]), vertical_amplitude=vertical_amplitude)
     # print(initial_pose)
@@ -395,7 +391,7 @@ def main():
 
     output_dir = make_dir(experiment_info)
     # Enter interactive mode to adjust the pose with keyboard controls.
-    frames_rendered = interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), step_size=move_step_size, radius_step=radius_step_size)    
+    frames_rendered = interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), move_step=move_step_size, zoom_step=radius_step_size)    
 
     experiment_info['Rendered Frames'] = frames_rendered
     write_experiment_log(output_dir, experiment_info)
