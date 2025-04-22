@@ -205,7 +205,7 @@ def write_experiment_log(output_dir, experiment_info):
             f.write(f"{key}: {value}\n")
     print(f"Experiment log written to {log_file}")
 
-def get_starting_pose(starting_angle, radius=1.0, center=np.array([0, 0, 0]), vertical_amplitude=0):
+def get_initial_pose(starting_angle, radius=1.0, center=np.array([0, 0, 0]), vertical_amplitude=0):
     """
     Generate an orbit of camera poses around the given center.
     Each pose is a 4x4 camera-to-world matrix.
@@ -289,7 +289,7 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
         current_pose        = initial_pose.copy()
         last_key_pressed    = ""
         last_frame_rendered = ""
-        digit_rounding = 3
+        digit_rounding = 4
 
         while True:
             # redraw status
@@ -306,7 +306,6 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
                 time.sleep(0.05)
                 continue
 
-            # --- HORIZONTAL MOVEMENT ONLY ---
             if key == ord('w'):            # forward
                 current_pose[1,3] = round(current_pose[1,3] - move_step, digit_rounding)
                 last_key_pressed = 'w'
@@ -334,9 +333,7 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
                     last_key_pressed, last_frame_rendered
                 )
                 render_frame(system, current_pose, output_dir, last_frame_rendered)
-
-            # --- EXIT ---
-            elif key == 27:                # ESC
+            elif key == 27:                # ESCAPE, exit session
                 break
 
             time.sleep(0.05)
@@ -370,13 +367,13 @@ def main():
     base_output_dir = "keyboard_rendered_frames"
     experiment_id = get_directories_number(base_output_dir) + 1
     
-    starting_angle = 4.6
+    starting_angle = 4.71 # (3/2) * pi 
     radius = 1.5
     vertical_amplitude = 0 
     move_step_size = 0.1
     radius_step_size = 0.05
 
-    initial_pose = get_starting_pose(starting_angle=starting_angle, radius=radius, center=np.array([0,0,0]), vertical_amplitude=vertical_amplitude)
+    initial_pose = get_initial_pose(starting_angle=starting_angle, radius=radius, center=np.array([0,0,0]), vertical_amplitude=vertical_amplitude)
     # print(initial_pose)
 
     experiment_info = {
