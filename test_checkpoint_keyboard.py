@@ -281,60 +281,72 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
         stdscr.refresh()
 
     def curses_loop(stdscr):
-        nonlocal initial_pose
-        curses.curs_set(0)  # hide cursor
+        curses.curs_set(0)        # hide cursor
         stdscr.nodelay(True)
         stdscr.timeout(100)
-        frame_counter = 0
-        current_pose = initial_pose.copy()
-        last_key_pressed = ""
+
+        frame_counter       = 0
+        current_pose        = initial_pose.copy()
+        last_key_pressed    = ""
         last_frame_rendered = ""
 
         while True:
-            display_text(stdscr=stdscr, current_pose=current_pose, frame_counter=frame_counter, last_key_pressed=last_key_pressed, frame_name=last_frame_rendered)
-            
+            # redraw status
+            display_text(
+                stdscr=stdscr,
+                current_pose=current_pose,
+                frame_counter=frame_counter,
+                last_key_pressed=last_key_pressed,
+                frame_name=last_frame_rendered
+            )
+
             key = stdscr.getch()
             if key == -1:
                 time.sleep(0.05)
                 continue
-            elif key == ord('w'):
-                current_pose[:3, 3] += step_size * current_pose[:3, 2]
+
+            # --- HORIZONTAL MOVEMENT ONLY ---
+            if key == ord('w'):            # forward
+                current_pose[1,3] -= step_size
                 last_key_pressed = 'w'
-            elif key == ord('s'):
-                current_pose[:3, 3] -= step_size * current_pose[:3, 2]
+            elif key == ord('s'):          # backward
+                current_pose[1,3] += step_size
                 last_key_pressed = 's'
-            elif key == ord('a'):
-                current_pose[:3, 3] -= step_size * current_pose[:3, 0]
+            elif key == ord('a'):          # left
+                r = current_pose[:3,0].copy()
+                r[1] = 0
+                r /= np.linalg.norm(r)
+                current_pose[:3,3] -= step_size * r
                 last_key_pressed = 'a'
-            elif key == ord('d'):
-                current_pose[:3, 3] += step_size * current_pose[:3, 0]
+
+            elif key == ord('d'):          # right
+                r = current_pose[:3,0].copy()
+                r[1] = 0
+                r /= np.linalg.norm(r)
+                current_pose[:3,3] += step_size * r
                 last_key_pressed = 'd'
-            elif key == curses.KEY_UP:
-                pos = current_pose[:3, 3]
-                vec = pos - center
-                r = np.linalg.norm(vec)
-                new_r = r + radius_step
-                if r > 0:
-                    current_pose[:3, 3] = center + (vec / r) * new_r
-                last_key_pressed = '^'
-            elif key == curses.KEY_DOWN:
-                pos = current_pose[:3, 3]
-                vec = pos - center
-                r = np.linalg.norm(vec)
-                new_r = max(0, r - radius_step)
-                if r > 0:
-                    current_pose[:3, 3] = center + (vec / r) * new_r
-                last_key_pressed = 'v'
-            elif key in [10, 13]:  # ENTER KEY 
+
+            # --- VERTICAL MOVEMENT ONLY ---
+            
+            # --- RENDER CURRENT FRAME ---
+            elif key in (10, 13):          # ENTER
                 last_key_pressed = 'ENTER'
                 frame_counter += 1
                 last_frame_rendered = f"custom_frame_{frame_counter:02d}.png"
-                display_text(stdscr=stdscr, current_pose=current_pose, frame_counter=frame_counter, last_key_pressed=last_key_pressed, frame_name=last_frame_rendered)
-                render_frame(system, current_pose, output_dir, frame_name=last_frame_rendered)
-            elif key == 27:  # ESC, exit mode
+                display_text(
+                    stdscr, current_pose, frame_counter,
+                    last_key_pressed, last_frame_rendered
+                )
+                render_frame(system, current_pose, output_dir, last_frame_rendered)
+
+            # --- EXIT ---
+            elif key == 27:                # ESC
                 break
+
             time.sleep(0.05)
+
         return frame_counter
+
 
     num_frames_rendered = curses.wrapper(curses_loop)
     return num_frames_rendered
@@ -351,6 +363,8 @@ def main():
 
     # width, height = 810, 1440
     width, height = 1080, 1920
+    # width, height = 540, 960
+
     system.setup_intrinsics(width, height)   # my own setup function in order to prevent test dataset loading...
     
     # Load checkpoint weights.
