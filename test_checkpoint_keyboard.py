@@ -164,8 +164,10 @@ class NeRFSystem(torch.nn.Module):
         original_h = camdata[1].height
         
         # Compute scaling factors from original resolution to new resolution.
-        w_factor = original_w / w
-        h_factor = original_h / h
+        w_factor = w / original_w
+        h_factor = h / original_h
+        print(f"{w_factor=}")
+        print(f"{h_factor=}")
 
         self.img_wh = (w, h)
 
@@ -356,8 +358,8 @@ def main():
     # system.setup_from_test()  # Set up directions and intrinsics using the test dataset.
 
     # width, height = 810, 1440
-    width, height = 1080, 1920
-    # width, height = 540, 960
+    # width, height = 1080, 1920
+    width, height = 540, 960
 
     system.setup_intrinsics(width, height)   # my own setup function in order to prevent test dataset loading...
     
