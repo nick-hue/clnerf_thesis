@@ -1,14 +1,14 @@
 #!/bin/bash
 
-export DATA_DIR=/workspace/data/counter # where counter dataset is saved
+export DATA_DIR=/data/counter_sm/counter_sm_base # where counter dataset is saved
 
-task_number=2
+task_number=1
 scene_name=counter
 downsample=1.0
 epochs=20
+rep=10
 
-rep=$1
-experiment_name=${scene_name}_r${rep}_e${epochs}
+experiment_name=${scene_name}_r${rep}_e${epochs}_t${task_number}
 
 echo Now training experiment with name : $experiment_name
 
