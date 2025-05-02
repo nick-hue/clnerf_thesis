@@ -295,8 +295,9 @@ if __name__ == "__main__":
 
     # images = read_images_binary(os.path.join(basedir, "sparse/0/images_converted.bin"))
 
-    # Functions for converting filenames from base_frame_00001.png to base/base_frame_00001.png
-    # and added_frame_00001.png to added/added_frame_00001.png respectively 
+    # Functions for converting filenames from 
+    # base_frame_00001.png to base/base_frame_00001.png
+    # added_frame_00001.png to added/added_frame_00001.png respectively 
     # new_images = convert_binary_image_names(images)
     # new_images_filename = os.path.join(basedir, "sparse/0/images_converted.bin")
     # save_new_images(new_images_filename, new_images)
