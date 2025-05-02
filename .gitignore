@@ -1,13 +1,14 @@
 dataset
 dataset/
 data/
-
+# mine 
 rendered_frames/
 rendered_frames_vid/
 keyboard_rendered_frames/
 counter_rendered_frames_v2/
 custom_rendered_frames/
 *.png
+*.pyc
 
 results
 results/
