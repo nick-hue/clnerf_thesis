@@ -202,7 +202,9 @@ def save_poses(basedir, poses, pts3d, perm):
         save_arr.append(np.concatenate([pose_flat, np.array([close_depth, inf_depth])], 0))
     save_arr = np.array(save_arr)
     
-    np.save(os.path.join(basedir, 'poses_bounds.npy'), save_arr)
+    save_dir = os.path.join(basedir, 'poses_bounds.npy')
+    # print(save_dir)
+    np.save(save_dir, save_arr)
     print("Saved poses_bounds.npy with shape:", save_arr.shape)
 
 def make_poses_files(basedir, images, pts3d):
@@ -286,26 +288,32 @@ def save_new_images(out_file, images):
 
 
 if __name__ == "__main__":
-    basedir = "/home/nicag/clnerf_thesis/data/counter_sm/counter_sm_merged/sparse/1/"
-    # basedir = "/mnt/nas_drive/nangelidis/breville"
+    # basedir = "/home/nicag/clnerf_thesis/data/counter_sm/counter_sm_merged/sparse/1/"
+    basedir = "/home/nicag/clnerf_thesis/data/counter_sm/counter_sm_merged/"
+    binaries_dir = os.path.join(basedir, "sparse/0/")
+    # binaries_dir = "/mnt/nas_drive/nangelidis/breville"
 
-    images = read_images_binary(os.path.join(basedir, "images.bin"))
-    points3d = read_points3d_binary(os.path.join(basedir, "points3D.bin"))
-    cameras = read_cameras_binary(os.path.join(basedir, "cameras.bin"))
+    images = read_images_binary(os.path.join(binaries_dir, "images.bin"))
+    points3d = read_points3d_binary(os.path.join(binaries_dir, "points3D.bin"))
+    cameras = read_cameras_binary(os.path.join(binaries_dir, "cameras.bin"))
 
-    # images = read_images_binary(os.path.join(basedir, "sparse/0/images_converted.bin"))
+    # images = read_images_binary(os.path.join(binaries_dir, "sparse/0/images_converted.bin"))
 
     # Functions for converting filenames from 
     # base_frame_00001.png to base/base_frame_00001.png
     # added_frame_00001.png to added/added_frame_00001.png respectively 
     # new_images = convert_binary_image_names(images)
-    # new_images_filename = os.path.join(basedir, "sparse/0/images_converted.bin")
+    # new_images_filename = os.path.join(binaries_dir, "sparse/0/images_converted.bin")
     # save_new_images(new_images_filename, new_images)
 
     # DISPLAYING images
-    # for image_id, data in images.items():
-    #     print(data.name)    
-        
+    print_names = []
+    for image_id, data in images.items():
+        # print(data.name.split("/")[0])
+        if data.name.split("/")[0] not in print_names:
+            print(data)
+            print_names.append(data.name.split("/")[0])
+    
     print(len(images))
     print(len(points3d))
     print(len(cameras))
