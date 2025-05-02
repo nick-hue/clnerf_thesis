@@ -319,7 +319,7 @@ if __name__ == "__main__":
     print(len(cameras))
     
     # Compute and save poses_bounds.npy
-    make_poses_files(basedir, images, points3d)
+    # make_poses_files(basedir, images, points3d)
 
 
     # for cam_id, data in cameras.items():
