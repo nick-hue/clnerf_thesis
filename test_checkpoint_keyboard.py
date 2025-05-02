@@ -233,7 +233,7 @@ def get_initial_pose(starting_angle, radius=1.0, center=np.array([0, 0, 0]), ver
     return pose
 
 def get_directories_number(dir):
-    print(f"{dir=}")
+    # print(f"{dir=}")
     return len(next(os.walk(dir))[1])
 
 def make_dir(exp_info):
@@ -382,13 +382,13 @@ def main():
 
     experiment_info = {
         "id": experiment_id,
+        "base_output_dir": base_output_dir,
         "exp_dir": experiment_dir,
         "starting_angle" : starting_angle,
         "downsample" : system.hparams.downsample,
         "Rendered frame width-height" : system.img_wh,
         "Radius": radius,
         "Vertical Amplitued": vertical_amplitude,
-        "base_output_dir": base_output_dir,
     }
 
     output_dir = make_dir(experiment_info)
