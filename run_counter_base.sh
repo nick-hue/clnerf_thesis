@@ -2,7 +2,7 @@
 
 # this is for the smaller input so change the counter data to counter_sm
 
-export DATA_DIR=/workspace/data/counter_sm # where counter dataset is saved
+export DATA_DIR=/workspace/data/counter_sm_base/ # where counter dataset is saved
 
 task_number=1
 scene_name=counter

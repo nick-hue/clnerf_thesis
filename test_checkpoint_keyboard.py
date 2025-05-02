@@ -164,8 +164,10 @@ class NeRFSystem(torch.nn.Module):
         original_h = camdata[1].height
         
         # Compute scaling factors from original resolution to new resolution.
-        w_factor = original_w / w
-        h_factor = original_h / h
+        w_factor = w / original_w
+        h_factor = h / original_h
+        print(f"{w_factor=}")
+        print(f"{h_factor=}")
 
         self.img_wh = (w, h)
 
@@ -231,14 +233,15 @@ def get_initial_pose(starting_angle, radius=1.0, center=np.array([0, 0, 0]), ver
     return pose
 
 def get_directories_number(dir):
+    print(f"{dir=}")
     return len(next(os.walk(dir))[1])
 
 def make_dir(exp_info):
     # Create a unique output directory based on a timestamp and experiment index.
-    base_output_dir = exp_info['base_output_dir']
-    os.makedirs(base_output_dir, exist_ok=True)
+    experiment_dir = exp_info['exp_dir']
+    os.makedirs(experiment_dir, exist_ok=True)
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = os.path.join(base_output_dir, f"{timestamp}_v{exp_info['id']}")
+    output_dir = os.path.join(experiment_dir, f"{timestamp}_v{exp_info['id']}")
     os.makedirs(output_dir, exist_ok=True)
     return output_dir
 
@@ -272,7 +275,7 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
     # current_pose = initial_pose.copy()
     def display_text(stdscr, current_pose, frame_counter, last_key_pressed, frame_name=""):
         stdscr.clear()
-        stdscr.addstr(0, 0, "Interactive Mode: WASD to move; Up/Down adjust zoom; ENTER to render frame from current pose; ESC to exit")
+        stdscr.addstr(0, 0, "Interactive Mode: WASD to move; ^/v to zoom in/out; ENTER to render frame from current pose; ESC to exit")
         stdscr.addstr(2, 0, f"Current position: {current_pose[:3, 3]}")
         # stdscr.addstr(3, 0, f"Radius: {}")
         stdscr.addstr(3, 0, f"Frames rendered this session: {frame_counter}")
@@ -355,8 +358,8 @@ def main():
     # system.setup_from_test()  # Set up directions and intrinsics using the test dataset.
 
     # width, height = 810, 1440
-    width, height = 1080, 1920
-    # width, height = 540, 960
+    # width, height = 1080, 1920
+    width, height = 540, 960
 
     system.setup_intrinsics(width, height)   # my own setup function in order to prevent test dataset loading...
     
@@ -365,7 +368,8 @@ def main():
     print("Checkpoint loaded successfully.")
     
     base_output_dir = "keyboard_rendered_frames"
-    experiment_id = get_directories_number(base_output_dir) + 1
+    experiment_dir = base_output_dir + f"/{hparams.exp_name}"
+    experiment_id = get_directories_number(experiment_dir) + 1
     
     starting_angle = 4.71 # (3/2) * pi 
     radius = 1.5
@@ -378,6 +382,7 @@ def main():
 
     experiment_info = {
         "id": experiment_id,
+        "exp_dir": experiment_dir,
         "starting_angle" : starting_angle,
         "downsample" : system.hparams.downsample,
         "Rendered frame width-height" : system.img_wh,
