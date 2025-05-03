@@ -16,7 +16,7 @@ from datasets.ray_utils import axisangle_to_R, get_rays
 # mine 
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-
+torch.cuda.empty_cache()
 
 # models
 from kornia.utils.grid import create_meshgrid3d
@@ -291,8 +291,7 @@ class NeRFSystem(LightningModule):
 if __name__ == '__main__':
     hparams = get_opts()
     # print(f"{hparams=}")
-
-    torch.cuda.empty_cache() 
+    print(hparams.no_save_test)
 
     if hparams.val_only and (not hparams.ckpt_path):
         raise ValueError('You need to provide a @ckpt_path for validation!')
@@ -313,43 +312,43 @@ if __name__ == '__main__':
     # strategy = DDPPlugin(find_unused_parameters=False) if hparams.num_gpus>1 else None
     strategy = DDPStrategy(find_unused_parameters=False) if hparams.num_gpus > 1 else None ## added
 
-    # if hparams.task_curr != hparams.task_number - 1:
-    #     trainer = Trainer(max_epochs=hparams.num_epochs,
-    #                     check_val_every_n_epoch=hparams.num_epochs+1,
-    #                     callbacks=callbacks,
-    #                     logger=logger,
-    #                     enable_model_summary=False,
-    #                     accelerator='gpu',
-    #                     devices=hparams.num_gpus,
-    #                     strategy=strategy,
-    #                     num_sanity_val_steps=-1 if hparams.val_only else 0,
-    #                     precision=16)
-    # else:  
-    #     trainer = Trainer(max_epochs=hparams.num_epochs,
-    #                     check_val_every_n_epoch=hparams.num_epochs,
-    #                     callbacks=callbacks,
-    #                     logger=logger,
-    #                     enable_model_summary=False,
-    #                     accelerator='gpu',
-    #                     devices=hparams.num_gpus,
-    #                     strategy=strategy,
-    #                     num_sanity_val_steps=-1 if hparams.val_only else 0,
-    #                     precision=16)
+    if hparams.task_curr != hparams.task_number - 1:
+        trainer = Trainer(max_epochs=hparams.num_epochs,
+                        check_val_every_n_epoch=hparams.num_epochs+1,
+                        callbacks=callbacks,
+                        logger=logger,
+                        enable_model_summary=False,
+                        accelerator='gpu',
+                        devices=hparams.num_gpus,
+                        strategy=strategy,
+                        num_sanity_val_steps=-1 if hparams.val_only else 0,
+                        precision=16)
+    else:  
+        trainer = Trainer(max_epochs=hparams.num_epochs,
+                        check_val_every_n_epoch=hparams.num_epochs,
+                        callbacks=callbacks,
+                        logger=logger,
+                        enable_model_summary=False,
+                        accelerator='gpu',
+                        devices=hparams.num_gpus,
+                        strategy=strategy,
+                        num_sanity_val_steps=-1 if hparams.val_only else 0,
+                        precision=16)
         
-     # --- We don't need any validation or test passes ---
-    trainer = Trainer(
-        max_epochs=hparams.num_epochs,
-        limit_val_batches=0,   # skip validation
-        limit_test_batches=0,  # skip testing
-        callbacks=callbacks,
-        logger=logger,
-        enable_model_summary=False,
-        accelerator='gpu',
-        devices=hparams.num_gpus,
-        strategy=strategy,
-        precision=16,
-        num_sanity_val_steps=0  # skip sanity check on val
-    )
+    #  # --- We don't need any validation or test passes ---
+    # trainer = Trainer(
+    #     max_epochs=hparams.num_epochs,
+    #     limit_val_batches=0,   # skip validation
+    #     limit_test_batches=0,  # skip testing
+    #     callbacks=callbacks,
+    #     logger=logger,
+    #     enable_model_summary=False,
+    #     accelerator='gpu',
+    #     devices=hparams.num_gpus,
+    #     strategy=strategy,
+    #     precision=16,
+    #     num_sanity_val_steps=0  # skip sanity check on val
+    # )
 
     trainer.fit(system, ckpt_path=hparams.ckpt_path)
 
@@ -359,14 +358,14 @@ if __name__ == '__main__':
                       save_poses=hparams.optimize_ext)
         torch.save(ckpt_, f'ckpts/NGPGv2_CL/{hparams.dataset_name}/{hparams.exp_name}/epoch={hparams.num_epochs-1}_slim.ckpt')
 
-    # if hparams.task_curr == (hparams.task_number -1) and (not hparams.no_save_test): # save video
-    #     imgs = sorted(glob.glob(os.path.join(system.val_dir, '*.png')))
-    #     imageio.mimsave(os.path.join(system.val_dir, 'rgb.mp4'),
-    #                     [imageio.imread(img) for img in imgs[::2]],
-    #                     fps=30, macro_block_size=1)
-    #     imageio.mimsave(os.path.join(system.val_dir, 'depth.mp4'),
-    #                     [imageio.imread(img) for img in imgs[1::2]],
-    #                     fps=30, macro_block_size=1)
+    if hparams.task_curr == (hparams.task_number -1) and (not hparams.no_save_test): # save video
+        imgs = sorted(glob.glob(os.path.join(system.val_dir, '*.png')))
+        imageio.mimsave(os.path.join(system.val_dir, 'rgb.mp4'),
+                        [imageio.imread(img) for img in imgs[::2]],
+                        fps=30, macro_block_size=1)
+        imageio.mimsave(os.path.join(system.val_dir, 'depth.mp4'),
+                        [imageio.imread(img) for img in imgs[1::2]],
+                        fps=30, macro_block_size=1)
 
-    # if hparams.task_curr != (hparams.task_number -1):
-    #     trainer.test(system)
+    if hparams.task_curr != (hparams.task_number -1):
+        trainer.test(system)

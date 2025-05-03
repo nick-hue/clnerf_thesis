@@ -600,10 +600,6 @@ class ColmapDataset_NGPA_CLNerf(BaseDataset):
             self.id_train_final = list(range(len(self.poses)))
         self.id_train_final.sort()
 
-        print(f"{img_paths=}")
-        print(f"{rep_name=}")
-        print(f"{type(img_paths)=}")
-
         print("[split-{}] len(img_paths) = {}, id_train = {}".format(
             self.split, len(img_paths), self.id_train_final))
         print(f'Loading {len(img_paths)} {split} images ...')
