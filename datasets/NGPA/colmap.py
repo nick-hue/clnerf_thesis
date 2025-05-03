@@ -459,6 +459,7 @@ class ColmapDataset_NGPA_CLNerf(BaseDataset):
         ]
         # get the task id
         task_ids, test_img_ids = name_to_task(img_paths)
+        # print(f"{task_ids=} \n{test_img_ids=}")
 
         w2c_mats = []
         bottom = np.array([[0, 0, 0, 1.]])
@@ -598,6 +599,10 @@ class ColmapDataset_NGPA_CLNerf(BaseDataset):
         else:
             self.id_train_final = list(range(len(self.poses)))
         self.id_train_final.sort()
+
+        print(f"{img_paths=}")
+        print(f"{rep_name=}")
+        print(f"{type(img_paths)=}")
 
         print("[split-{}] len(img_paths) = {}, id_train = {}".format(
             self.split, len(img_paths), self.id_train_final))

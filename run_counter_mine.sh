@@ -1,23 +1,29 @@
 #!/bin/bash
 
-export DATA_DIR=/data/counter_sm/counter_sm_base # where counter dataset is saved
+export DATA_DIR=/workspace/data/counter_sm_merged/ # where counter dataset is saved
 
-task_number=1
+task_curr=1
+task_number=3
 scene_name=counter
-downsample=1.0
-epochs=20
 rep=10
+epochs=10
+downsample=0.5
 
-experiment_name=${scene_name}_r${rep}_e${epochs}_t${task_number}
+experiment_name=${scene_name}_r${rep}_e${epochs}_t0_${task_number}
+echo Experiment name   : $experiment_name
 
-echo Now training experiment with name : $experiment_name
-
-
-for ((i=0; i<$task_number; i++))
-do
-    python train_ngpgv2_CLNerf.py \
-        --root_dir $DATA_DIR --dataset_name colmap_ngpa_CLNerf \
+python train_ngpgv2_CLNerf.py \
+        --root_dir $DATA_DIR \
+        --dataset_name colmap_ngpa_CLNerf \
         --exp_name $experiment_name \
-        --num_epochs $epochs --batch_size 8192 --lr 1e-2 --rep_size $rep --eval_lpips \
-        --task_curr $i --task_number $task_number --dim_a 48 --scale 8.0 --downsample ${downsample} --vocab_size ${task_number}
-done
+        --rep_size $rep \
+        --num_epochs $epochs \
+        --task_curr $task_curr \
+        --task_number $task_number \
+        --batch_size 8192 \
+        --lr 1e-2 \
+        --eval_lpips \
+        --dim_a 48 \
+        --scale 8.0 \
+        --downsample ${downsample} \
+        --vocab_size ${task_number}
