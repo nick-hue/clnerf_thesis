@@ -57,8 +57,11 @@ class NeRFSystem(torch.nn.Module):
 
         rgb_act = 'None' if self.hparams.use_exposure else 'Sigmoid'
         # The vocab_size is set based on task index (for continual learning)
-        self.model = NGPGv2(scale=self.hparams.scale, vocab_size=self.hparams.task_curr+1, 
-                             rgb_act=rgb_act, dim_a=self.hparams.dim_a, dim_g=self.hparams.dim_g)
+        # self.model = NGPGv2(scale=self.hparams.scale, vocab_size=self.hparams.task_curr+1, 
+        #                      rgb_act=rgb_act, dim_a=self.hparams.dim_a, dim_g=self.hparams.dim_g)
+        self.model = NGPGv2(scale=self.hparams.scale,    vocab_size=self.hparams.vocab_size, rgb_act=rgb_act,
+                            dim_a=self.hparams.dim_a,dim_g=self.hparams.dim_g)
+
         G = self.model.grid_size
         self.model.register_buffer('density_grid', torch.zeros(self.model.cascades, G**3))
         from kornia.utils.grid import create_meshgrid3d
@@ -249,9 +252,13 @@ def render_frame(system, custom_pose, output_dir, frame_name):
     # Render one frame from the provided custom_pose.
     system.eval()
     with torch.no_grad():
+        # batch = {
+        #     'pose': torch.from_numpy(custom_pose).unsqueeze(0).float().to(system.device),
+        #     'ts': torch.tensor([0], dtype=torch.int64, device=system.device)
+        # }
         batch = {
-            'pose': torch.from_numpy(custom_pose).unsqueeze(0).float().to(system.device),
-            'ts': torch.tensor([0], dtype=torch.int64, device=system.device)
+            'pose': torch.from_numpy(custom_pose)[None].to(system.device),
+            'ts':   torch.tensor([system.hparams.task_curr], device=system.device)
         }
         results = system(batch, split='test')
     

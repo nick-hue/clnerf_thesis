@@ -2,14 +2,14 @@
 
 export DATA_DIR=/workspace/data/counter_sm_merged/ # where counter dataset is saved
 
-task_curr=2
-task_number=3
+task_curr=4
+task_number=5
 scene_name=counter
 rep=10
 epochs=10
 downsample=0.5
 
-experiment_name=${scene_name}_r${rep}_e${epochs}_t0_other
+experiment_name=${scene_name}_r${rep}_e${epochs}_total5
 echo Experiment name   : $experiment_name
 
 python train_ngpgv2_CLNerf.py \
@@ -27,4 +27,5 @@ python train_ngpgv2_CLNerf.py \
         --scale 8.0 \
         --downsample ${downsample} \
         --vocab_size ${task_number} \
-        --no_save_test
+        --no_save_test # dont save test video and frames when done training 
+        

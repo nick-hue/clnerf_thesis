@@ -335,21 +335,6 @@ if __name__ == '__main__':
                         num_sanity_val_steps=-1 if hparams.val_only else 0,
                         precision=16)
         
-    #  # --- We don't need any validation or test passes ---
-    # trainer = Trainer(
-    #     max_epochs=hparams.num_epochs,
-    #     limit_val_batches=0,   # skip validation
-    #     limit_test_batches=0,  # skip testing
-    #     callbacks=callbacks,
-    #     logger=logger,
-    #     enable_model_summary=False,
-    #     accelerator='gpu',
-    #     devices=hparams.num_gpus,
-    #     strategy=strategy,
-    #     precision=16,
-    #     num_sanity_val_steps=0  # skip sanity check on val
-    # )
-
     trainer.fit(system, ckpt_path=hparams.ckpt_path)
 
     if not hparams.val_only: # save slimmed ckpt for the last epoch
