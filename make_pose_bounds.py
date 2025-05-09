@@ -289,7 +289,7 @@ def save_new_images(out_file, images):
 
 if __name__ == "__main__":
     # basedir = "/home/nicag/clnerf_thesis/data/counter_sm/counter_sm_merged/sparse/1/"
-    basedir = "/home/nicag/clnerf_thesis/data/counter_sm/counter_sm_merged/"
+    basedir = "/home/nicag/cl_to_ns/counter_sm_base/"
     binaries_dir = os.path.join(basedir, "sparse/0/")
     # binaries_dir = "/mnt/nas_drive/nangelidis/breville"
 
@@ -307,23 +307,23 @@ if __name__ == "__main__":
     # save_new_images(new_images_filename, new_images)
 
     # DISPLAYING images
-    print_names = []
-    for image_id, data in images.items():
-        # print(data.name.split("/")[0])
-        if data.name.split("/")[0] not in print_names:
-            print(data)
-            print_names.append(data.name.split("/")[0])
+    # print_names = []
+    # for image_id, data in images.items():
+    #     # print(data.name.split("/")[0])
+    #     if data.name.split("/")[0] not in print_names:
+    #         print(data)
+    #         print_names.append(data.name.split("/")[0])
     
     print(len(images))
     print(len(points3d))
     print(len(cameras))
     
     # Compute and save poses_bounds.npy
-    # make_poses_files(basedir, images, points3d)
+    make_poses_files(basedir, images, points3d)
 
 
-    # for cam_id, data in cameras.items():
-    #     print(data)
+    for cam_id, data in cameras.items():
+        print(data)
     
     # print(type(cameras))
     # print(len(cameras))

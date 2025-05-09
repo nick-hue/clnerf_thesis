@@ -459,7 +459,7 @@ class ColmapDataset_NGPA_CLNerf(BaseDataset):
         ]
         # get the task id
         task_ids, test_img_ids = name_to_task(img_paths)
-        # print(f"{task_ids=} \n{test_img_ids=}")
+        print(f"{task_ids=} \n{test_img_ids=}")
 
         w2c_mats = []
         bottom = np.array([[0, 0, 0, 1.]])

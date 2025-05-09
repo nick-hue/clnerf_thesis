@@ -14,6 +14,7 @@ from datasets import dataset_dict
 from datasets.ray_utils import axisangle_to_R, get_rays
 
 # mine 
+from pytorch_lightning.strategies import DDPStrategy 
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 torch.cuda.empty_cache()
@@ -38,7 +39,6 @@ from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
 # pytorch-lightning
 from pytorch_lightning.plugins import DDPPlugin
-from pytorch_lightning.strategies import DDPStrategy ## added
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import TQDMProgressBar, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger

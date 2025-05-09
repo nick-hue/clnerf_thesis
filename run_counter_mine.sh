@@ -2,14 +2,15 @@
 
 export DATA_DIR=/workspace/data/counter_sm_merged/ # where counter dataset is saved
 
-task_curr=4
-task_number=5
+task_curr=0
+task_number=5 # task number has to be the same number as the total number of training parts available
 scene_name=counter
-rep=10
-epochs=10
-downsample=0.5
+rep=5
+epochs=5
+batch_size=8192
+downsample=1.0
 
-experiment_name=${scene_name}_r${rep}_e${epochs}_total5
+experiment_name=test_${scene_name}_r${rep}_e${epochs}_b${batch_size}
 echo Experiment name   : $experiment_name
 
 python train_ngpgv2_CLNerf.py \
@@ -20,7 +21,7 @@ python train_ngpgv2_CLNerf.py \
         --num_epochs $epochs \
         --task_curr $task_curr \
         --task_number $task_number \
-        --batch_size 8192 \
+        --batch_size $batch_size \
         --lr 1e-2 \
         --eval_lpips \
         --dim_a 48 \
