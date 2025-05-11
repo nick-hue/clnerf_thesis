@@ -243,8 +243,11 @@ def make_dir(exp_info):
     # Create a unique output directory based on a timestamp and experiment index.
     experiment_dir = exp_info['exp_dir']
     os.makedirs(experiment_dir, exist_ok=True)
+    exp_id = get_directories_number(experiment_dir) + 1
+    exp_info['exp_id'] = exp_id
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = os.path.join(experiment_dir, f"{timestamp}_v{exp_info['id']}")
+    output_dir = os.path.join(experiment_dir, f"{timestamp}_v{exp_id}")
+
     os.makedirs(output_dir, exist_ok=True)
     return output_dir
 
@@ -376,29 +379,28 @@ def main():
     
     base_output_dir = "keyboard_rendered_frames"
     experiment_dir = base_output_dir + f"/{hparams.exp_name}"
-    experiment_id = get_directories_number(experiment_dir) + 1
-    
+
     starting_angle = 4.71 # (3/2) * pi 
     radius = 1.5
     vertical_amplitude = 0 
     move_step_size = 0.1
     radius_step_size = 0.05
 
-    initial_pose = get_initial_pose(starting_angle=starting_angle, radius=radius, center=np.array([0,0,0]), vertical_amplitude=vertical_amplitude)
-    # print(initial_pose)
-
     experiment_info = {
-        "id": experiment_id,
         "base_output_dir": base_output_dir,
         "exp_dir": experiment_dir,
+        "exp_name": hparams.exp_name,
         "starting_angle" : starting_angle,
         "downsample" : system.hparams.downsample,
         "Rendered frame width-height" : system.img_wh,
         "Radius": radius,
         "Vertical Amplitued": vertical_amplitude,
-    }
-
+    }    
     output_dir = make_dir(experiment_info)
+
+    initial_pose = get_initial_pose(starting_angle=starting_angle, radius=radius, center=np.array([0,0,0]), vertical_amplitude=vertical_amplitude)
+    # print(initial_pose)
+
     # Enter interactive mode to adjust the pose with keyboard controls.
     frames_rendered = interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), move_step=move_step_size, zoom_step=radius_step_size)    
 

@@ -17,7 +17,8 @@ from datasets.ray_utils import axisangle_to_R, get_rays
 from pytorch_lightning.strategies import DDPStrategy 
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-torch.cuda.empty_cache()
+# torch.cuda.empty_cache()
+from pytorch_lightning.profiler import PyTorchProfiler
 
 # models
 from kornia.utils.grid import create_meshgrid3d
@@ -293,6 +294,9 @@ if __name__ == '__main__':
     # print(f"{hparams=}")
     print(hparams.no_save_test)
 
+    # clear
+    torch.cuda.empty_cache()
+
     if hparams.val_only and (not hparams.ckpt_path):
         raise ValueError('You need to provide a @ckpt_path for validation!')
     system = NeRFSystem(hparams)
@@ -321,8 +325,17 @@ if __name__ == '__main__':
                         accelerator='gpu',
                         devices=hparams.num_gpus,
                         strategy=strategy,
-                        num_sanity_val_steps=-1 if hparams.val_only else 0,
-                        precision=16)
+                        # num_sanity_val_steps=-1 if hparams.val_only else 0,
+                        precision=16,
+                        # profiler=PyTorchProfiler(
+                        #     schedule=torch.profiler.schedule(wait=1, warmup=1, active=3),
+                        #     on_trace_ready=torch.profiler.tensorboard_trace_handler('./tb_logs'),
+                        #     record_shapes=True,
+                        #     with_stack=True),
+                        limit_val_batches=0,    # don’t run any validation batches
+                        # limit_test_batches=0,   # don’t run any test batches
+                        num_sanity_val_steps=0, # don’t even do sanity‐check val steps at startup
+                        )
     else:  
         trainer = Trainer(max_epochs=hparams.num_epochs,
                         check_val_every_n_epoch=hparams.num_epochs,
@@ -332,8 +345,18 @@ if __name__ == '__main__':
                         accelerator='gpu',
                         devices=hparams.num_gpus,
                         strategy=strategy,
-                        num_sanity_val_steps=-1 if hparams.val_only else 0,
-                        precision=16)
+                        # num_sanity_val_steps=-1 if hparams.val_only else 0,
+                        precision=16,
+                        # profiler=PyTorchProfiler(
+                        #     schedule=torch.profiler.schedule(wait=1, warmup=1, active=3),
+                        #     on_trace_ready=torch.profiler.tensorboard_trace_handler('./tb_logs'),
+                        #     record_shapes=True,
+                        #     with_stack=True
+                        # ),
+                        limit_val_batches=0,    # don’t run any validation batches
+                        # limit_test_batches=0,   # don’t run any test batches
+                        num_sanity_val_steps=0, # don’t even do sanity‐check val steps at startup
+                        )
         
     trainer.fit(system, ckpt_path=hparams.ckpt_path)
 

@@ -8,9 +8,9 @@ scene_name=counter
 rep=5
 epochs=5
 batch_size=8192
-downsample=1.0
+downsample=0.875
 
-experiment_name=test_${scene_name}_r${rep}_e${epochs}_b${batch_size}
+experiment_name=test_validation_${scene_name}_r${rep}_e${epochs}_b${batch_size}_d${downsample}
 echo Experiment name   : $experiment_name
 
 python train_ngpgv2_CLNerf.py \
@@ -30,3 +30,4 @@ python train_ngpgv2_CLNerf.py \
         --vocab_size ${task_number} \
         --no_save_test # dont save test video and frames when done training 
         
+echo Training done. 

@@ -10,6 +10,7 @@ counter_rendered_frames_v2/
 custom_rendered_frames/
 *.png
 .vscode
+tb_logs
 
 results
 results/
