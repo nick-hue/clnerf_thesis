@@ -296,6 +296,7 @@ if __name__ == '__main__':
 
     # clear
     torch.cuda.empty_cache()
+    torch.cuda.reset_peak_memory_stats()
 
     if hparams.val_only and (not hparams.ckpt_path):
         raise ValueError('You need to provide a @ckpt_path for validation!')

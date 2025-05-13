@@ -6,11 +6,11 @@ task_curr=0
 task_number=5 # task number has to be the same number as the total number of training parts available
 scene_name=counter
 rep=5
-epochs=5
-batch_size=8192
-downsample=0.875
+epochs=10
+batch_size=2048
+downsample=0.75
 
-experiment_name=test_validation_${scene_name}_r${rep}_e${epochs}_b${batch_size}_d${downsample}
+experiment_name=check_2048_${scene_name}_r${rep}_e${epochs}_b${batch_size}_d${downsample}
 echo Experiment name   : $experiment_name
 
 python train_ngpgv2_CLNerf.py \
