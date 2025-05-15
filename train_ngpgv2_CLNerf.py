@@ -302,12 +302,19 @@ if __name__ == '__main__':
         raise ValueError('You need to provide a @ckpt_path for validation!')
     system = NeRFSystem(hparams)
 
+    # ckpt_cb = ModelCheckpoint(dirpath=f'ckpts/NGPGv2_CL/{hparams.dataset_name}/{hparams.exp_name}',
+    #                           filename='{epoch:d}',
+    #                           save_weights_only=True,
+    #                           every_n_epochs=hparams.num_epochs,
+    #                           save_on_train_epoch_end=True,
+    #                           save_top_k=-1)
     ckpt_cb = ModelCheckpoint(dirpath=f'ckpts/NGPGv2_CL/{hparams.dataset_name}/{hparams.exp_name}',
                               filename='{epoch:d}',
-                              save_weights_only=True,
+                              save_weights_only=False,
                               every_n_epochs=hparams.num_epochs,
                               save_on_train_epoch_end=True,
                               save_top_k=-1)
+    
     callbacks = [ckpt_cb, TQDMProgressBar(refresh_rate=1)]
 
     logger = TensorBoardLogger(save_dir=f"logs/NGPGv2_CL/{hparams.dataset_name}",
@@ -316,6 +323,7 @@ if __name__ == '__main__':
 
     # strategy = DDPPlugin(find_unused_parameters=False) if hparams.num_gpus>1 else None
     strategy = DDPStrategy(find_unused_parameters=False) if hparams.num_gpus > 1 else None ## added
+    print(f"strategy = {strategy}")
 
     if hparams.task_curr != hparams.task_number - 1:
         trainer = Trainer(max_epochs=hparams.num_epochs,
@@ -376,5 +384,20 @@ if __name__ == '__main__':
                         [imageio.imread(img) for img in imgs[1::2]],
                         fps=30, macro_block_size=1)
 
+    # print(f"{system.test_dataset.num_workers}")
+
     if hparams.task_curr != (hparams.task_number -1):
         trainer.test(system)
+
+    # render_strategy = DDPStrategy(find_unused_parameters=False)
+    # if hparams.task_curr != (hparams.task_number -1):
+    #     # build a fresh Trainer just for rendering
+    #     render_trainer = Trainer(
+    #         accelerator='gpu',
+    #         devices=2,                         # <- force two GPUs here
+    #         strategy=render_strategy,           # reuse your DDP strategy if any
+    #         precision=16,
+    #         enable_model_summary=False,
+    #         logger=None,
+    #     )
+    #     render_trainer.test(system)
