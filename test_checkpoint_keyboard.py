@@ -333,16 +333,15 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
                 continue
 
             # —— ROTATION CONTROLS ——
-            # yaw left/right around world-up ([0,1,0])
             if key == ord('q'):       # roll left (positive about Z)
-                R = axis_angle_to_matrix(np.array([0,0,1]),  yaw_step)
-                M = R.dot(current_pose[:3,:3])
-                current_pose[:3,:3] = np.round(M, digit_rounding)
+                axis = current_pose[:3,:3][:,1]
+                R = axis_angle_to_matrix(axis,  yaw_step)
+                current_pose[:3,:3] = np.round(R.dot(current_pose[:3,:3]), digit_rounding)
                 last_key_pressed = 'q'
             elif key == ord('e'):     # roll right (negative about Z)
-                R = axis_angle_to_matrix(np.array([0,0,1]), -yaw_step)
-                M = R.dot(current_pose[:3,:3])
-                current_pose[:3,:3] = np.round(M, digit_rounding)
+                axis = current_pose[:3,:3][:,1]
+                R = axis_angle_to_matrix(axis, -yaw_step)
+                current_pose[:3,:3] = np.round(R.dot(current_pose[:3,:3]), digit_rounding)
                 last_key_pressed = 'e'
             # pitch up/down around camera-right axis
             elif key == ord('f'):     # look up
