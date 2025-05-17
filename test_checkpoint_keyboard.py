@@ -280,18 +280,31 @@ def run_experiment(system, custom_pose, experiment_info, output_dir):
     write_experiment_log(output_dir, experiment_info)
 
 
-def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), move_step=0.1, zoom_step=0.1):
+def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), move_step=0.1, zoom_step=0.1, yaw_step=0.1, pitch_step=0.1):
     import curses
+    import numpy as np
+
     # current_pose = initial_pose.copy()
     def display_text(stdscr, current_pose, frame_counter, last_key_pressed, frame_name=""):
         stdscr.clear()
-        stdscr.addstr(0, 0, "Interactive Mode: WASD to move; ^/v to zoom in/out; ENTER to render frame from current pose; ESC to exit")
+        stdscr.addstr(0, 0, "Interactive Mode: WASD to move; ^/v to zoom in/out, q/e to look left/right, r/f to look up/down; ENTER to render frame from current pose; ESC to exit")
         stdscr.addstr(2, 0, f"Current position: {current_pose[:3, 3]}")
-        # stdscr.addstr(3, 0, f"Radius: {}")
-        stdscr.addstr(3, 0, f"Frames rendered this session: {frame_counter}")
-        stdscr.addstr(4, 0, f"Last frame rendered: {frame_name}")
-        stdscr.addstr(5, 0, f"Last key pressed: [{last_key_pressed}]")
+        stdscr.addstr(3, 0, f"Current rotation:\n{current_pose[:3, :3]}")
+        stdscr.addstr(7, 0, f"Frames rendered this session: {frame_counter}")
+        stdscr.addstr(8, 0, f"Last frame rendered: {frame_name}")
+        stdscr.addstr(9, 0, f"Last key pressed: [{last_key_pressed}]")
         stdscr.refresh()
+
+    # helper: build a 3×3 rotation from axis (3,) and angle (rad)
+    def axis_angle_to_matrix(axis, theta):
+        axis = axis/np.linalg.norm(axis)
+        a = np.cos(theta/2)
+        b, c, d = -axis*np.sin(theta/2)
+        return np.array([
+            [a*a + b*b - c*c - d*d, 2*(b*c - a*d),     2*(b*d + a*c)],
+            [2*(b*c + a*d),         a*a + c*c - b*b - d*d, 2*(c*d - a*b)],
+            [2*(b*d - a*c),         2*(c*d + a*b),     a*a + d*d - b*b - c*c],
+        ], dtype=np.float32)
 
     def curses_loop(stdscr):
         curses.curs_set(0)        # hide cursor
@@ -319,6 +332,31 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
                 time.sleep(0.05)
                 continue
 
+            # —— ROTATION CONTROLS ——
+            # yaw left/right around world-up ([0,1,0])
+            if key == ord('q'):       # roll left (positive about Z)
+                R = axis_angle_to_matrix(np.array([0,0,1]),  yaw_step)
+                M = R.dot(current_pose[:3,:3])
+                current_pose[:3,:3] = np.round(M, digit_rounding)
+                last_key_pressed = 'q'
+            elif key == ord('e'):     # roll right (negative about Z)
+                R = axis_angle_to_matrix(np.array([0,0,1]), -yaw_step)
+                M = R.dot(current_pose[:3,:3])
+                current_pose[:3,:3] = np.round(M, digit_rounding)
+                last_key_pressed = 'e'
+            # pitch up/down around camera-right axis
+            elif key == ord('f'):     # look up
+                right = current_pose[:3,:3][:,0]   # first column
+                R = axis_angle_to_matrix(right,  pitch_step)
+                current_pose[:3,:3] = np.round(R.dot(current_pose[:3,:3]), digit_rounding)
+                last_key_pressed = 'f'
+            elif key == ord('r'):     # look down
+                right = current_pose[:3,:3][:,0]
+                R = axis_angle_to_matrix(right, -pitch_step)
+                current_pose[:3,:3] = np.round(R.dot(current_pose[:3,:3]), digit_rounding)
+                last_key_pressed = 'r'
+
+            # —— TRANSLATION CONTROLS —— 
             if key == ord('w'):            # forward
                 current_pose[1,3] = round(current_pose[1,3] - move_step, digit_rounding)
                 last_key_pressed = 'w'
