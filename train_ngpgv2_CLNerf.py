@@ -369,11 +369,11 @@ if __name__ == '__main__':
         
     trainer.fit(system, ckpt_path=hparams.ckpt_path)
 
-    if not hparams.val_only: # save slimmed ckpt for the last epoch
-        ckpt_ = \
-            slim_ckpt(f'ckpts/NGPGv2_CL/{hparams.dataset_name}/{hparams.exp_name}/epoch={hparams.num_epochs-1}.ckpt',
-                      save_poses=hparams.optimize_ext)
-        torch.save(ckpt_, f'ckpts/NGPGv2_CL/{hparams.dataset_name}/{hparams.exp_name}/epoch={hparams.num_epochs-1}_slim.ckpt')
+    # if not hparams.val_only: # save slimmed ckpt for the last epoch
+    #     ckpt_ = \
+    #         slim_ckpt(f'ckpts/NGPGv2_CL/{hparams.dataset_name}/{hparams.exp_name}/epoch={hparams.num_epochs-1}.ckpt',
+    #                   save_poses=hparams.optimize_ext)
+    #     torch.save(ckpt_, f'ckpts/NGPGv2_CL/{hparams.dataset_name}/{hparams.exp_name}/epoch={hparams.num_epochs-1}_slim.ckpt')
 
     if hparams.task_curr == (hparams.task_number -1) and (not hparams.no_save_test): # save video
         imgs = sorted(glob.glob(os.path.join(system.val_dir, '*.png')))
