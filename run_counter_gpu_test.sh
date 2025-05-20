@@ -7,10 +7,12 @@ task_number=5 # task number has to be the same number as the total number of tra
 scene_name=counter
 rep=5
 epochs=10
-batch_size=2048
+batch_size=4096
 downsample=0.75
+dim_a=32 # default 48
+dim_g=16 # default 16
 
-experiment_name=test_gpu2_${scene_name}_r${rep}_e${epochs}_b${batch_size}_d${downsample}
+experiment_name=test_dim32_${scene_name}_r${rep}_e${epochs}_b${batch_size}_d${downsample}
 echo Experiment name   : $experiment_name
 
 python train_ngpgv2_CLNerf.py \
@@ -24,7 +26,8 @@ python train_ngpgv2_CLNerf.py \
         --batch_size $batch_size \
         --lr 1e-2 \
         --eval_lpips \
-        --dim_a 48 \
+        --dim_a $dim_a \
+        --dim_g $dim_g \
         --scale 8.0 \
         --downsample ${downsample} \
         --vocab_size ${task_number} \

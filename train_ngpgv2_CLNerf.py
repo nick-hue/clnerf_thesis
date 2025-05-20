@@ -334,16 +334,11 @@ if __name__ == '__main__':
                         accelerator='gpu',
                         devices=hparams.num_gpus,
                         strategy=strategy,
-                        # num_sanity_val_steps=-1 if hparams.val_only else 0,
                         precision=16,
-                        # profiler=PyTorchProfiler(
-                        #     schedule=torch.profiler.schedule(wait=1, warmup=1, active=3),
-                        #     on_trace_ready=torch.profiler.tensorboard_trace_handler('./tb_logs'),
-                        #     record_shapes=True,
-                        #     with_stack=True),
-                        limit_val_batches=0,    # don’t run any validation batches
-                        # limit_test_batches=0,   # don’t run any test batches
-                        num_sanity_val_steps=0, # don’t even do sanity‐check val steps at startup
+                        limit_val_batches=0,        # don’t run any validation batches
+                        num_sanity_val_steps=0,     # don’t even do sanity‐check val steps at startup
+                        val_check_interval=1.0,     # no mid‐epoch validation
+                        # limit_test_batches=0,     # don’t run any test batches
                         )
     else:  
         trainer = Trainer(max_epochs=hparams.num_epochs,
@@ -354,17 +349,11 @@ if __name__ == '__main__':
                         accelerator='gpu',
                         devices=hparams.num_gpus,
                         strategy=strategy,
-                        # num_sanity_val_steps=-1 if hparams.val_only else 0,
                         precision=16,
-                        # profiler=PyTorchProfiler(
-                        #     schedule=torch.profiler.schedule(wait=1, warmup=1, active=3),
-                        #     on_trace_ready=torch.profiler.tensorboard_trace_handler('./tb_logs'),
-                        #     record_shapes=True,
-                        #     with_stack=True
-                        # ),
                         limit_val_batches=0,    # don’t run any validation batches
-                        # limit_test_batches=0,   # don’t run any test batches
                         num_sanity_val_steps=0, # don’t even do sanity‐check val steps at startup
+                        val_check_interval=1.0,           # no mid‐epoch validation
+                        # limit_test_batches=0,   # don’t run any test batches
                         )
         
     trainer.fit(system, ckpt_path=hparams.ckpt_path)
@@ -401,3 +390,6 @@ if __name__ == '__main__':
     #         logger=None,
     #     )
     #     render_trainer.test(system)
+
+    print(f"Experiment : {hparams.exp_name}")
+    print(f"Checkpoint saved at : {ckpt_cb.dirpath}")
