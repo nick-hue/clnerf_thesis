@@ -82,6 +82,8 @@ class NeRFSystem(LightningModule):
             torch.zeros(self.model.cascades, G**3))
         self.model.register_buffer('grid_coords',
             create_meshgrid3d(G, G, G, False, dtype=torch.int32).reshape(-1, 3))
+        
+        load_ckpt(self.model, self.hparams.weight_path)
 
     def forward(self, batch, split):
         if split=='train':
@@ -126,7 +128,7 @@ class NeRFSystem(LightningModule):
         self.train_dataset.batch_size = self.hparams.batch_size
         self.train_dataset.ray_sampling_strategy = self.hparams.ray_sampling_strategy
 
-        self.test_dataset = dataset(split='test', **kwargs)
+        # self.test_dataset = dataset(split='test', **kwargs)
         self.rep_dataset = dataset(split='rep', **kwargs)
 
     def configure_optimizers(self):
@@ -141,7 +143,7 @@ class NeRFSystem(LightningModule):
             self.register_parameter('dT',
                 nn.Parameter(torch.zeros(N, 3, device=self.device)))
 
-        load_ckpt(self.model, self.hparams.weight_path)
+        # load_ckpt(self.model, self.hparams.weight_path)
 
         net_params = []
         for n, p in self.named_parameters():
