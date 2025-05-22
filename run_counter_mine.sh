@@ -6,14 +6,14 @@ task_curr=0
 task_number=5 # task number has to be the same number as the total number of training parts available
 scene_name=counter      
 rep=5                   # default 10
-epochs=10               # default 20
+epochs=1               # default 20
 batch_size=4096         # default 8192
 downsample=1.0          # default 1.0
 dim_a=48                # default 48
 dim_g=16                # default 16
-scale=16.0              # default 8.0
+scale=8.0              # default 8.0
 
-experiment_name=test_s${scale}_dima${dim_a}_dimg${dim_g}_${scene_name}_r${rep}_e${epochs}_b${batch_size}_d${downsample}
+experiment_name=test_dtl_added1_s${scale}_dima${dim_a}_dimg${dim_g}_${scene_name}_r${rep}_e${epochs}_b${batch_size}_d${downsample}
 echo Experiment name   : $experiment_name
 
 python train_ngpgv2_CLNerf.py \

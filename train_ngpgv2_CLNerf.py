@@ -83,6 +83,7 @@ class NeRFSystem(LightningModule):
         self.model.register_buffer('grid_coords',
             create_meshgrid3d(G, G, G, False, dtype=torch.int32).reshape(-1, 3))
         
+        # for the checkpoint to be loaded once when we have 2 gpus
         load_ckpt(self.model, self.hparams.weight_path)
 
     def forward(self, batch, split):
@@ -174,10 +175,18 @@ class NeRFSystem(LightningModule):
                           pin_memory=True)
 
     def test_dataloader(self):
+        print("test_dataloader")
         return DataLoader(self.rep_dataset,
                           num_workers=8,
                           batch_size=None,
                           pin_memory=True)
+    # def test_dataloader(self):
+    
+    #     return DataLoader(self.rep_dataset,
+    #                       num_workers=8,            # number of CPU loader processes
+    #                       batch_size=None,              # render 4 images at once (tune up/down)
+    #                       pin_memory=True,
+    #                       prefetch_factor=4)
 
     def on_train_start(self):
         self.model.mark_invisible_cells(self.train_dataset.K.to(self.device),
