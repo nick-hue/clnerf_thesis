@@ -4,6 +4,12 @@ import argparse
 def get_opts():
     parser = argparse.ArgumentParser()
 
+    # my options
+    parser.add_argument('--gpu2_render',
+                        action='store_true',
+                        default=False,
+                        help='whether to use 2 GPUs for rendering')
+
     # dataset parameters
     parser.add_argument('--root_dir',
                         type=str,

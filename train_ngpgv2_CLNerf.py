@@ -175,15 +175,14 @@ class NeRFSystem(LightningModule):
                           pin_memory=True)
 
     def test_dataloader(self):
-        print("test_dataloader")
         return DataLoader(self.rep_dataset,
                           num_workers=8,
                           batch_size=None,
                           pin_memory=True)
     # def test_dataloader(self):
-    
+    #     print("test_dataloader")
     #     return DataLoader(self.rep_dataset,
-    #                       num_workers=8,            # number of CPU loader processes
+    #                       num_workers=16,            # number of CPU loader processes
     #                       batch_size=None,              # render 4 images at once (tune up/down)
     #                       pin_memory=True,
     #                       prefetch_factor=4)
@@ -386,8 +385,23 @@ if __name__ == '__main__':
 
     # print(f"{system.test_dataset.num_workers}")
 
-    if hparams.task_curr != (hparams.task_number -1):
-        trainer.test(system)
+    if hparams.gpu2_render:
+        # build a fresh Trainer just for rendering
+        render_strategy = DDPStrategy(find_unused_parameters=False)
+        render_trainer = Trainer(
+            accelerator='gpu',
+            devices=2,                         # <- force two GPUs here
+            strategy=render_strategy,           # reuse your DDP strategy if any
+            precision=16,
+            enable_model_summary=False,
+            logger=None,
+        )
+        # render_trainer.test(system, ckpt_path=hparams.ckpt_path)
+        render_trainer.test(system)
+
+    else:
+        if hparams.task_curr != (hparams.task_number-1):
+            trainer.test(system)
 
     # render_strategy = DDPStrategy(find_unused_parameters=False)
     # if hparams.task_curr != (hparams.task_number -1):
