@@ -283,6 +283,7 @@ def run_experiment(system, custom_pose, experiment_info, output_dir):
 def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), move_step=0.1, zoom_step=0.1, yaw_step=0.1, pitch_step=0.1):
     import curses
     import numpy as np
+    import threading
 
     # current_pose = initial_pose.copy()
     def display_text(stdscr, current_pose, frame_counter, last_key_pressed, frame_name=""):
@@ -311,9 +312,10 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
         stdscr.nodelay(True)
         stdscr.timeout(100)
 
-        frame_counter       = 0
-        current_pose        = initial_pose.copy()
-        last_key_pressed    = ""
+        threads = []
+        frame_counter = 0
+        current_pose = initial_pose.copy()
+        last_key_pressed = ""
         last_frame_rendered = ""
         digit_rounding = 4
 
@@ -382,11 +384,26 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
                     stdscr, current_pose, frame_counter,
                     last_key_pressed, last_frame_rendered
                 )
-                render_frame(system, current_pose, output_dir, last_frame_rendered)
+                # render_frame(system, current_pose, output_dir, last_frame_rendered)
+                # Spawn off a background thread to do the heavy lifting:
+                pose_copy = current_pose.copy()
+                t = threading.Thread(
+                    target=render_frame,
+                    args=(system, pose_copy, output_dir, last_frame_rendered),
+                    daemon=True
+                )
+                t.start()
+                threads.append(t)
+
             elif key == 27:                # ESCAPE, exit session
                 break
 
             time.sleep(0.05)
+
+        print("Waiting for all threads to finish...")
+        for t in threads:
+            t.join()
+        print("All threads finished.")
 
         return frame_counter
 
