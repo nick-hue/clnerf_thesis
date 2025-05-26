@@ -405,8 +405,8 @@ def main():
     # system.setup_from_test()  # Set up directions and intrinsics using the test dataset.
 
     # width, height = 810, 1440
-    # width, height = 1080, 1920
-    width, height = 540, 960
+    width, height = 1080, 1920
+    # width, height = 540, 960
 
     system.setup_intrinsics(width, height)   # my own setup function in order to prevent test dataset loading...
     
@@ -432,6 +432,9 @@ def main():
         "Rendered frame width-height" : system.img_wh,
         "Radius": radius,
         "Vertical Amplitued": vertical_amplitude,
+        "Task Current": hparams.task_curr,
+        "Task Number": hparams.task_number,
+        "Vocab Size": hparams.vocab_size,
     }    
     output_dir = make_dir(experiment_info)
 

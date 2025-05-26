@@ -302,7 +302,6 @@ class NeRFSystem(LightningModule):
 if __name__ == '__main__':
     hparams = get_opts()
     # print(f"{hparams=}")
-    print(hparams.no_save_test)
 
     # clear
     torch.cuda.empty_cache()
