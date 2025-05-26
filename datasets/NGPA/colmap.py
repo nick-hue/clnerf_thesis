@@ -457,6 +457,21 @@ class ColmapDataset_NGPA_CLNerf(BaseDataset):
             os.path.join(self.root_dir, folder, name)
             for name in sorted(img_names)
         ]
+        def name_to_task(img_paths):
+            tasks = []
+            task_list = []
+            for img_path in img_paths:
+                # group by the folder name as before
+                folder = os.path.basename(os.path.dirname(img_path))
+                if folder not in tasks:
+                    tasks.append(folder)
+                task_list.append(tasks.index(folder))
+
+            
+            # We no longer want any test split:
+            test_ids = []
+
+            return task_list, test_ids
         # get the task id
         task_ids, test_img_ids = name_to_task(img_paths)
         print(f"{task_ids=} \n{test_img_ids=}")
