@@ -289,8 +289,22 @@ class NeRFSystem(LightningModule):
 
         rgb_pred = rearrange(results['rgb'].cpu().numpy(), '(h w) c -> h w c', h=h)
         rgb_pred = (rgb_pred*255).astype(np.uint8)
-        imageio.imsave(os.path.join(self.rep_dir, fname), rgb_pred)
-        return None
+        # imageio.imsave(os.path.join(self.rep_dir, fname), rgb_pred)
+        # return None
+        print(f"Image rendered {fname}")
+        return {'fname': fname, 'rgb': results['rgb'].cpu()}
+    
+    def test_epoch_end(self, outputs):
+        print(f"{outputs[:2]=}")
+        print(f"Test images saved to {self.rep_dir}")
+        for out in outputs:
+            fname = out['fname']
+            rgb = out['rgb']  # shape (H*W,3)
+            w, h = self.train_dataset.img_wh  # or wherever you stored it
+            img = rearrange(rgb, '(h w) c -> h w c', h=h).numpy()
+            img_uint8 = (img*255).astype(np.uint8)
+            imageio.imsave(os.path.join(self.rep_dir, fname), img_uint8)
+    
 
     def get_progress_bar_dict(self):
         # don't show the version number
