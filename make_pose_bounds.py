@@ -309,11 +309,12 @@ if __name__ == "__main__":
 
     # DISPLAYING images
     # print_names = []
-    # for image_id, data in images.items():
-    #     # print(data.name.split("/")[0])
-    #     if data.name.split("/")[0] not in print_names:
-    #         print(data)
-    #         print_names.append(data.name.split("/")[0])
+    for image_id, data in images.items():
+        # print(data.name.split("/")[0])
+        print(f"name: {data.name}, id: {data.id}")
+        # if data.name.split("/")[0] not in print_names:
+        #     print(data)
+        #     print_names.append(data.name.split("/")[0])
     
     print(len(images))
     # print(len(points3d))
