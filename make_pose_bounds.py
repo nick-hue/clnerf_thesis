@@ -289,7 +289,7 @@ def save_new_images(out_file, images):
 
 if __name__ == "__main__":
     # basedir = "/home/nicag/clnerf_thesis/data/counter_sm/counter_sm_merged/sparse/1/"
-    basedir = "/home/nicag/clnerf_thesis/data/counter_part/counter_2_20"
+    basedir = "/home/nicag/clnerf_thesis/data/drz"
     binaries_dir = os.path.join(basedir, "sparse/0/")
     # binaries_dir = "/mnt/nas_drive/nangelidis/breville"
 
