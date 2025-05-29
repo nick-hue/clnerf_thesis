@@ -290,11 +290,11 @@ def save_new_images(out_file, images):
 if __name__ == "__main__":
     # basedir = "/home/nicag/clnerf_thesis/data/counter_sm/counter_sm_merged/sparse/1/"
     basedir = "/mnt/nas_drive/nangelidis/drz"
-    binaries_dir = os.path.join(basedir, "sparse/1/")
+    binaries_dir = os.path.join(basedir, "sparse/0/")
     # binaries_dir = "/mnt/nas_drive/nangelidis/breville"
 
     images = read_images_binary(os.path.join(binaries_dir, "images.bin"))
-    points3d = read_points3d_binary(os.path.join(binaries_dir, "points3D.bin"))
+    # points3d = read_points3d_binary(os.path.join(binaries_dir, "points3D.bin"))
     # cameras = read_cameras_binary(os.path.join(binaries_dir, "cameras.bin"))
 
 
@@ -321,7 +321,7 @@ if __name__ == "__main__":
     # print(len(cameras))
     
     # Compute and save poses_bounds.npy
-    make_poses_files(basedir, images, points3d)
+    # make_poses_files(basedir, images, points3d)
 
 
     # for cam_id, data in cameras.items():
