@@ -289,7 +289,7 @@ def save_new_images(out_file, images):
 
 if __name__ == "__main__":
     # basedir = "/home/nicag/clnerf_thesis/data/counter_sm/counter_sm_merged/sparse/1/"
-    basedir = "/mnt/nas_drive/nangelidis/drz_single"
+    basedir = "/mnt/nas_drive/nangelidis/counter_final/counter_two/"
     binaries_dir = os.path.join(basedir, "sparse/0/")
     # binaries_dir = "/mnt/nas_drive/nangelidis/breville"
 
@@ -321,6 +321,7 @@ if __name__ == "__main__":
     # print(len(cameras))
     
     # Compute and save poses_bounds.npy
+    # bash: line 1: python: command not found
     make_poses_files(basedir, images, points3d)
 
 

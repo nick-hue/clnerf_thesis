@@ -652,8 +652,12 @@ class ColmapDataset_NGPA_CLNerf(BaseDataset):
             # training pose is retrieved in train.py
             if self.ray_sampling_strategy == 'all_images':  # randomly select images
                 img_idxs = np.random.choice(len(self.poses), self.batch_size)
+            # elif self.ray_sampling_strategy == 'same_image':  # randomly select ONE image
+            #     img_idxs = np.random.choice(len(self.poses), 1)[0]
             elif self.ray_sampling_strategy == 'same_image':  # randomly select ONE image
-                img_idxs = np.random.choice(len(self.poses), 1)[0]
+                single = np.random.choice(len(self.poses), 1)[0]
+                # repeat it so we have one entry per ray
+                img_idxs = np.full(self.batch_size, single, dtype=np.int64)
             # randomly select pixels
             pix_idxs = np.random.choice(self.img_wh[0] * self.img_wh[1],
                                         self.batch_size)
