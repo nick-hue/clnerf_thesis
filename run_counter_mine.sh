@@ -4,15 +4,16 @@
 # export DATA_DIR=/workspace/data/counter_sm_merged/
 # export DATA_DIR=/workspace/data/drz/
 # export DATA_DIR=/workspace/data/drz_single/
-export DATA_DIR=/workspace/data/counter_final/counter_extra/
 
-task_curr=1
-task_number=2 # task number has to be the same number as the total number of training parts available
-scene_name=counter_extra
-rep=5                   # default 10
-epochs=10               # default 20
-batch_size=4096         # default 8192
-downsample=1.0          # default 1.0
+scene_name=counter_tt   # scene name
+export DATA_DIR=/workspace/data/counter_final/$scene_name/
+
+task_curr=2             # current task number, this is the task that is being trained
+task_number=3           # task number has to be the same number as the total number of training parts available
+rep=5                   # replay buffer size (default 10)
+epochs=10               # epochs number during training (default 20)
+batch_size=4096         # batch_size while training (default 8192)
+downsample=1.0          # downsampling during rendering (default 1.0)
 dim_a=48                # default 48
 dim_g=16                # default 16
 scale=8.0               # default 8.0
