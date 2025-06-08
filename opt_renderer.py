@@ -10,7 +10,7 @@ def get_opts():
                         default=False,
                         help='whether to use 2 GPUs for rendering')
     # rendering options
-    parser.add_argument('--output_base_dir',
+    parser.add_argument('--base_output_dir',
                         type=str,
                         default='keyboard_rendered_frames',
                         help='base output directory for renders')

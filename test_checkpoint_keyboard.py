@@ -436,7 +436,6 @@ def main():
     hparams.dataset_name = "colmap_ngpa_CLNerf"
     hparams.vocab_size = hparams.task_curr + 1
     hparams.task_number = hparams.vocab_size
-    hparams.task_number = hparams.task_curr + 1
     hparams.scale = 8.0
 
     print(f"{hparams=}")
@@ -445,26 +444,24 @@ def main():
         raise ValueError("Please provide a checkpoint path using --weight_path.")
     
     system = NeRFSystem(hparams).to('cuda' if torch.cuda.is_available() else 'cpu')
-    # system.setup_from_test()  # Set up directions and intrinsics using the test dataset.
-
-    # width, height = 810, 1440
-    # width, height = 1920, 1080
-    # width, height = 540, 960
-
-    system.setup_intrinsics(hparams.width, hparams.height)   # my own setup function in order to prevent test dataset loading...
+    
+    # Setup model for rendering
+    system.setup_intrinsics(hparams.width, hparams.height)
     
     # Load checkpoint weights.
     load_ckpt(system.model, hparams.weight_path)
     print("Checkpoint loaded successfully.")
     
-    base_output_dir = "keyboard_rendered_frames"
-    experiment_dir = base_output_dir + f"/{hparams.exp_name}"
+    base_output_dir = hparams.base_output_dir
+    experiment_dir = os.path.join(base_output_dir, hparams.exp_name)
 
-    starting_angle = 4.71 # (3/2) * pi 
-    radius = 1.5
-    vertical_amplitude = 0 
-    move_step_size = 0.1
-    radius_step_size = 0.05
+    starting_angle = 4.71       # starting position of camera pose set to -> (3/2) * pi 
+    radius = 1.5                # get initial pose of the camera in 3D space, controls distance from the center
+    vertical_amplitude = 0      # vertical amplitude of the camera orbit, controls height of the camera
+    move_step_size = 0.1        # move front/back left/right velocity
+    radius_step_size = 0.05     # move up down velocity
+    yaw_step_size=0.1           # look left/right velocity
+    pitch_step_size=0.1         # look up/down velocity 
 
     experiment_info = {
         "base_output_dir": base_output_dir,
@@ -472,12 +469,16 @@ def main():
         "exp_name": hparams.exp_name,
         "starting_angle" : starting_angle,
         "downsample" : system.hparams.downsample,
-        "Rendered frame width-height" : system.img_wh,
-        "Radius": radius,
-        "Vertical Amplitued": vertical_amplitude,
         "Task Current": hparams.task_curr,
         "Task Number": hparams.task_number,
         "Vocab Size": hparams.vocab_size,
+        "Rendered frame width-height" : system.img_wh,
+        "Radius": radius,
+        "Vertical Amplitued": vertical_amplitude,
+        "Move Step Size": move_step_size,
+        "Radius Step Size": radius_step_size,
+        "Yaw Step Size": yaw_step_size,
+        "Pitch Step Size": pitch_step_size,
     }    
     output_dir = make_dir(experiment_info)
 
@@ -485,7 +486,7 @@ def main():
     # print(initial_pose)
 
     # Enter interactive mode to adjust the pose with keyboard controls.
-    frames_rendered = interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), move_step=move_step_size, zoom_step=radius_step_size)    
+    frames_rendered = interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), move_step=move_step_size, zoom_step=radius_step_size, yaw_step=yaw_step_size, pitch_step=pitch_step_size)    
 
     experiment_info['Rendered Frames'] = frames_rendered
     write_experiment_log(output_dir, experiment_info)
