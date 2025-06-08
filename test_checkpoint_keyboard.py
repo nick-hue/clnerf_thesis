@@ -24,7 +24,8 @@ from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
 # Utilities for checkpoint loading and argument parsing
 from utils.utils import load_ckpt
-from opt import get_opts
+# from opt import get_opts
+from opt_renderer import get_opts
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -163,35 +164,49 @@ class NeRFSystem(torch.nn.Module):
         camdata = read_cameras_binary(os.path.join(self.hparams.root_dir, 'sparse/0/cameras.bin'))
         
         # Original width and height of the camera
-        original_w = camdata[1].width
-        original_h = camdata[1].height
-        
-        # Compute scaling factors from original resolution to new resolution.
-        w_factor = w / original_w
-        h_factor = h / original_h
-        print(f"{w_factor=}")
-        print(f"{h_factor=}")
+        if w == -1 and h == -1:
+            w, h = camdata[1].width, camdata[1].height
+            # Read the intrinsic parameters without applying any downsample
+            if camdata[1].model == 'SIMPLE_RADIAL':
+                fx = fy = camdata[1].params[0]
+                cx = camdata[1].params[1]
+                cy = camdata[1].params[2]
+            elif camdata[1].model in ['PINHOLE', 'OPENCV']:
+                fx = camdata[1].params[0]
+                fy = camdata[1].params[1]
+                cx = camdata[1].params[2]
+                cy = camdata[1].params[3]
+            else:
+                raise ValueError(f"Unsupported camera model: {camdata[1].model}")
+        else:
+            original_w = camdata[1].width
+            original_h = camdata[1].height
+
+            # Compute scaling factors from original resolution to new resolution.
+            w_factor = w / original_w
+            h_factor = h / original_h
+            print(f"{w_factor=}")
+            print(f"{h_factor=}")
+
+            if camdata[1].model == 'SIMPLE_RADIAL':
+                original_fx = original_fy = camdata[1].params[0]
+                original_cx = camdata[1].params[1]
+                original_cy = camdata[1].params[2]
+            elif camdata[1].model in ['PINHOLE', 'OPENCV']:
+                original_fx = camdata[1].params[0]
+                original_fy = camdata[1].params[1]
+                original_cx = camdata[1].params[2]
+                original_cy = camdata[1].params[3]
+            else:
+                raise ValueError(f"Unsupported camera model: {camdata[1].model}")
+
+            # Scale the intrinsic parameters to adapt to the new resolution.
+            fx = original_fx * w_factor
+            fy = original_fy * h_factor
+            cx = original_cx * w_factor
+            cy = original_cy * h_factor
 
         self.img_wh = (w, h)
-
-        # Read the intrinsic parameters without applying any downsample
-        if camdata[1].model == 'SIMPLE_RADIAL':
-            original_fx = original_fy = camdata[1].params[0]
-            original_cx = camdata[1].params[1]
-            original_cy = camdata[1].params[2]
-        elif camdata[1].model in ['PINHOLE', 'OPENCV']:
-            original_fx = camdata[1].params[0]
-            original_fy = camdata[1].params[1]
-            original_cx = camdata[1].params[2]
-            original_cy = camdata[1].params[3]
-        else:
-            raise ValueError(f"Unsupported camera model: {camdata[1].model}")
-
-        # Scale the intrinsic parameters to adapt to the new resolution.
-        fx = original_fx * w_factor
-        fy = original_fy * h_factor
-        cx = original_cx * w_factor
-        cy = original_cy * h_factor
 
         self.K = torch.FloatTensor([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
         self.directions = get_ray_directions(h, w, self.K, device=self.device)
@@ -289,11 +304,12 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
     def display_text(stdscr, current_pose, frame_counter, last_key_pressed, frame_name=""):
         stdscr.clear()
         stdscr.addstr(0, 0, "Interactive Mode: WASD to move; ^/v to zoom in/out, q/e to look left/right, r/f to look up/down; ENTER to render frame from current pose; ESC to exit")
-        stdscr.addstr(2, 0, f"Current position: {current_pose[:3, 3]}")
-        stdscr.addstr(3, 0, f"Current rotation:\n{current_pose[:3, :3]}")
-        stdscr.addstr(7, 0, f"Frames rendered this session: {frame_counter}")
-        stdscr.addstr(8, 0, f"Last frame rendered: {frame_name}")
-        stdscr.addstr(9, 0, f"Last key pressed: [{last_key_pressed}]")
+        stdscr.addstr(2, 0, f"Render Outputs directory: {output_dir}")
+        stdscr.addstr(3, 0, f"Current position: {current_pose[:3, 3]}")
+        stdscr.addstr(4, 0, f"Current rotation:\n{current_pose[:3, :3]}")
+        stdscr.addstr(8, 0, f"Frames rendered this session: {frame_counter}")
+        stdscr.addstr(9, 0, f"Last frame rendered: {frame_name}")
+        stdscr.addstr(10, 0, f"Last key pressed: [{last_key_pressed}]")
         stdscr.refresh()
 
     # helper: build a 3×3 rotation from axis (3,) and angle (rad)
@@ -415,6 +431,16 @@ def main():
     # Parse options and update hparams for rendering.
     hparams = get_opts()
     hparams.val_only = True
+    
+    # setting defaults for renderer
+    hparams.dataset_name = "colmap_ngpa_CLNerf"
+    hparams.vocab_size = hparams.task_curr + 1
+    hparams.task_number = hparams.vocab_size
+    hparams.task_number = hparams.task_curr + 1
+    hparams.scale = 8.0
+
+    print(f"{hparams=}")
+
     if not hparams.weight_path:
         raise ValueError("Please provide a checkpoint path using --weight_path.")
     
@@ -422,10 +448,10 @@ def main():
     # system.setup_from_test()  # Set up directions and intrinsics using the test dataset.
 
     # width, height = 810, 1440
-    width, height = 1080, 1920
+    # width, height = 1920, 1080
     # width, height = 540, 960
 
-    system.setup_intrinsics(width, height)   # my own setup function in order to prevent test dataset loading...
+    system.setup_intrinsics(hparams.width, hparams.height)   # my own setup function in order to prevent test dataset loading...
     
     # Load checkpoint weights.
     load_ckpt(system.model, hparams.weight_path)
