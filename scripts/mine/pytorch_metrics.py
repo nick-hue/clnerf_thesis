@@ -11,7 +11,7 @@ def get_training_time(ea):
 
     return duration_str
 
-def show_experiment(exp_name):
+def show_experiment(exp_name, step=1):
     for exp_dir in os.listdir(base_dir):
         if not exp_dir.startswith(exp_name):
             continue
@@ -41,9 +41,9 @@ def show_experiment(exp_name):
             continue
         break
 
-    # for e in ea.Scalars("train/psnr"):
-    #     print(f"Step: {e.step}, PSNR: {e.value}, Wall time: {e.wall_time}")
-    # difference in wall time
+    for e in ea.Scalars("train/psnr"):
+        print(f"Step: {e.step}, PSNR: {e.value}, Wall time: {e.wall_time}")
+
     training_time = get_training_time(ea) 
     print(f"Experiment: {exp_name}, Training Time: {training_time}")
 
