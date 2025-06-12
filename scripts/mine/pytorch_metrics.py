@@ -45,7 +45,6 @@ def show_experiment(exp_name):
     #     print(f"Step: {e.step}, PSNR: {e.value}, Wall time: {e.wall_time}")
     # difference in wall time
     training_time = get_training_time(ea) 
-    
     print(f"Experiment: {exp_name}, Training Time: {training_time}")
 
 
@@ -103,18 +102,19 @@ def get_all_experiments_data_prefix(prefix, base_dir="logs/NGPGv2_CL/colmap_ngpa
 
     return results
 
-base_dir        = "logs/NGPGv2_CL/colmap_ngpa_CLNerf"
-experiment_pref = "counter_shirt"
+if __name__ == "__main__":
+    base_dir = "logs/NGPGv2_CL/colmap_ngpa_CLNerf"
+    experiment_pref = "counter_shirt"
 
-results = get_all_experiments_data_prefix(prefix=experiment_pref, base_dir=base_dir)
+    # Get all experiments data with the specified prefix
+    results = get_all_experiments_data_prefix(prefix=experiment_pref, base_dir=base_dir)
 
-# sort by PSNR descending
-results.sort(key=lambda x: x[1], reverse=True)
+    # sort by PSNR descending
+    results.sort(key=lambda x: x[1], reverse=True)
 
-# ——— 3``. Print final table ———
-print(f"\n{'Experiment':70s}  {'PSNR':>8s}   {'Loss':>8s}    {'Train Time':>10s}")
-print("-"*105)
-for name, psnr, loss, ttime in results:
-    print(f"{name:70s}   {psnr:8.4f}   {loss:8.4f}   {ttime:>10s}")
+    print(f"\n{'Experiment':70s}  {'PSNR':>8s}   {'Loss':>8s}    {'Train Time':>10s}")
+    print("-"*105)
+    for name, psnr, loss, ttime in results:
+        print(f"{name:70s}   {psnr:8.4f}   {loss:8.4f}   {ttime:>10s}")
 
-# show_experiment(exp_name="counter_shirt_high")
+    # show_experiment(exp_name="counter_shirt_high")
