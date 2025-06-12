@@ -44,7 +44,7 @@ def show_experiment(exp_name, step=1):
     print("-" * 54)
     print(f"| Step  | {"PSNR":20} | Wall time {" "*11}|")
     print("-" * 54)
-    for e in ea.Scalars("train/psnr"):
+    for e in ea.Scalars("train/psnr")[::step]:
         print(f"|{e.step:>6} | {e.value:>20} | {e.wall_time:20} |")
     print("-" * 54)
 
@@ -94,8 +94,7 @@ def get_all_experiments_data_prefix(prefix, base_dir="logs/NGPGv2_CL/colmap_ngpa
         losses   = [e.value for e in ea.Scalars("train/loss")[-last_n:]]
         median_loss = sorted(losses)[len(losses)//2] if losses else float('nan')
 
-        # lookup training time (or N/A)
-        
+        # training time
         t_time = "N/A"
         try:
             t_time = get_training_time(ea)
@@ -121,7 +120,7 @@ if __name__ == "__main__":
     # for name, psnr, loss, ttime in results:
     #     print(f"{name:70s}   {psnr:8.4f}   {loss:8.4f}   {ttime:>10s}")
 
-    show_experiment(exp_name="counter_shirt_mid")
-    show_experiment(exp_name="counter_shirt_high")
+    show_experiment(exp_name="counter_shirt_mid", step=10)
+    show_experiment(exp_name="counter_shirt_high", step=10)
 
 
