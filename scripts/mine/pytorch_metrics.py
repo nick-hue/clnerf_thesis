@@ -41,8 +41,12 @@ def show_experiment(exp_name, step=1):
             continue
         break
 
+    print("-" * 54)
+    print(f"| Step  | {"PSNR":20} | Wall time {" "*11}|")
+    print("-" * 54)
     for e in ea.Scalars("train/psnr"):
-        print(f"Step: {e.step}, PSNR: {e.value}, Wall time: {e.wall_time}")
+        print(f"|{e.step:>6} | {e.value:>20} | {e.wall_time:20} |")
+    print("-" * 54)
 
     training_time = get_training_time(ea) 
     print(f"Experiment: {exp_name}, Training Time: {training_time}")
@@ -112,9 +116,12 @@ if __name__ == "__main__":
     # sort by PSNR descending
     results.sort(key=lambda x: x[1], reverse=True)
 
-    print(f"\n{'Experiment':70s}  {'PSNR':>8s}   {'Loss':>8s}    {'Train Time':>10s}")
-    print("-"*105)
-    for name, psnr, loss, ttime in results:
-        print(f"{name:70s}   {psnr:8.4f}   {loss:8.4f}   {ttime:>10s}")
+    # print(f"\n{'Experiment':70s}  {'PSNR':>8s}   {'Loss':>8s}    {'Train Time':>10s}")
+    # print("-"*105)
+    # for name, psnr, loss, ttime in results:
+    #     print(f"{name:70s}   {psnr:8.4f}   {loss:8.4f}   {ttime:>10s}")
 
-    # show_experiment(exp_name="counter_shirt_high")
+    show_experiment(exp_name="counter_shirt_mid")
+    show_experiment(exp_name="counter_shirt_high")
+
+
