@@ -351,15 +351,26 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
                 continue
 
             # —— ROTATION CONTROLS ——
-            if key == ord('q'):       # roll left (positive about Z)
-                axis = current_pose[:3,:3][:,1]
+            # if key == ord('q'):       # roll left (positive about Z)
+            #     axis = current_pose[:3,:3][:,1]
+            #     R = axis_angle_to_matrix(axis,  yaw_step)
+            #     current_pose[:3,:3] = np.round(R.dot(current_pose[:3,:3]), digit_rounding)
+            #     last_key_pressed = 'q'
+            # elif key == ord('e'):     # roll right (negative about Z)
+            #     axis = current_pose[:3,:3][:,1]
+            #     R = axis_angle_to_matrix(axis, -yaw_step)
+            #     current_pose[:3,:3] = np.round(R.dot(current_pose[:3,:3]), digit_rounding)
+            #     last_key_pressed = 'e'
+
+            if key == ord('q'):       # yaw left around world-up
+                axis = np.array([0, 1, 0], dtype=np.float32)
                 R = axis_angle_to_matrix(axis,  yaw_step)
-                current_pose[:3,:3] = np.round(R.dot(current_pose[:3,:3]), digit_rounding)
+                current_pose[:3, :3] = np.round(R.dot(current_pose[:3, :3]), digit_rounding)
                 last_key_pressed = 'q'
-            elif key == ord('e'):     # roll right (negative about Z)
-                axis = current_pose[:3,:3][:,1]
+            elif key == ord('e'):     # yaw right around world-up
+                axis = np.array([0, 1, 0], dtype=np.float32)
                 R = axis_angle_to_matrix(axis, -yaw_step)
-                current_pose[:3,:3] = np.round(R.dot(current_pose[:3,:3]), digit_rounding)
+                current_pose[:3, :3] = np.round(R.dot(current_pose[:3, :3]), digit_rounding)
                 last_key_pressed = 'e'
             # pitch up/down around camera-right axis
             elif key == ord('f'):     # look up
@@ -416,7 +427,7 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
 
             time.sleep(0.05)
 
-        print("Waiting for all threads to finish...")
+        print("\nWaiting for all threads to finish...")
         for t in threads:
             t.join()
         print("All threads finished.")
@@ -438,7 +449,7 @@ def main():
     hparams.task_number = hparams.vocab_size
     hparams.scale = 8.0
 
-    print(f"{hparams=}")
+    # print(f"{hparams=}")
 
     if not hparams.weight_path:
         raise ValueError("Please provide a checkpoint path using --weight_path.")
