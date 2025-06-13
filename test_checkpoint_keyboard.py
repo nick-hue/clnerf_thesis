@@ -163,9 +163,10 @@ class NeRFSystem(torch.nn.Module):
         from datasets.colmap_utils import read_cameras_binary
         camdata = read_cameras_binary(os.path.join(self.hparams.root_dir, 'sparse/0/cameras.bin'))
         
-        # Original width and height of the camera
+        # # Original width and height of the camera
         if w == -1 and h == -1:
             w, h = camdata[1].width, camdata[1].height
+            original_w, original_h  = camdata[1].width, camdata[1].height
             # Read the intrinsic parameters without applying any downsample
             if camdata[1].model == 'SIMPLE_RADIAL':
                 fx = fy = camdata[1].params[0]
@@ -182,29 +183,66 @@ class NeRFSystem(torch.nn.Module):
             original_w = camdata[1].width
             original_h = camdata[1].height
 
-            # Compute scaling factors from original resolution to new resolution.
-            w_factor = w / original_w
-            h_factor = h / original_h
-            print(f"{w_factor=}")
-            print(f"{h_factor=}")
+        #     # Compute scaling factors from original resolution to new resolution.
+        #     w_factor = w / original_w
+        #     h_factor = h / original_h
+        #     print(f"{w_factor=}")
+        #     print(f"{h_factor=}")
 
-            if camdata[1].model == 'SIMPLE_RADIAL':
-                original_fx = original_fy = camdata[1].params[0]
-                original_cx = camdata[1].params[1]
-                original_cy = camdata[1].params[2]
-            elif camdata[1].model in ['PINHOLE', 'OPENCV']:
-                original_fx = camdata[1].params[0]
-                original_fy = camdata[1].params[1]
-                original_cx = camdata[1].params[2]
-                original_cy = camdata[1].params[3]
-            else:
-                raise ValueError(f"Unsupported camera model: {camdata[1].model}")
+        #     if camdata[1].model == 'SIMPLE_RADIAL':
+        #         original_fx = original_fy = camdata[1].params[0]
+        #         original_cx = camdata[1].params[1]
+        #         original_cy = camdata[1].params[2]
+        #     elif camdata[1].model in ['PINHOLE', 'OPENCV']:
+        #         original_fx = camdata[1].params[0]
+        #         original_fy = camdata[1].params[1]
+        #         original_cx = camdata[1].params[2]
+        #         original_cy = camdata[1].params[3]
+        #     else:
+        #         raise ValueError(f"Unsupported camera model: {camdata[1].model}")
 
-            # Scale the intrinsic parameters to adapt to the new resolution.
-            fx = original_fx * w_factor
-            fy = original_fy * h_factor
-            cx = original_cx * w_factor
-            cy = original_cy * h_factor
+        #     # Scale the intrinsic parameters to adapt to the new resolution.
+        #     fx = original_fx * w_factor
+        #     fy = original_fy * h_factor
+        #     cx = original_cx * w_factor
+        #     cy = original_cy * h_factor
+
+        # compute a uniform scale so we don't stretch
+        orig_aspect = original_w / original_h
+        target_aspect = w / h
+
+        if target_aspect > orig_aspect:
+          # target is wider → scale by height, pad left/right
+          scale = h / original_h
+          pad_x = (w - original_w * scale) / 2
+          pad_y = 0
+        else:
+          # target is taller (or equal) → scale by width, pad top/bottom
+          scale = w / original_w
+          pad_x = 0
+          pad_y = (h - original_h * scale) / 2
+
+        print(f"uniform scale = {scale:.4f}, pad_x = {pad_x:.1f}, pad_y = {pad_y:.1f}")
+
+        # now scale intrinsics and shift principal point for the padding
+        if camdata[1].model == 'SIMPLE_RADIAL':
+            original_fx = original_fy = camdata[1].params[0]
+            original_cx = camdata[1].params[1]
+            original_cy = camdata[1].params[2]
+        elif camdata[1].model in ['PINHOLE', 'OPENCV']:
+            original_fx = camdata[1].params[0]
+            original_fy = camdata[1].params[1]
+            original_cx = camdata[1].params[2]
+            original_cy = camdata[1].params[3]
+        else:
+            raise ValueError(f"Unsupported camera model: {camdata[1].model}")
+ 
+        # apply the uniform scale and add the padding offset
+        fx = original_fx * scale
+        fy = original_fy * scale
+        cx = original_cx * scale + pad_x
+        cy = original_cy * scale + pad_y
+
 
         self.img_wh = (w, h)
 
