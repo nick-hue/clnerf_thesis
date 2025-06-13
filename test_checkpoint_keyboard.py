@@ -310,6 +310,7 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
         stdscr.addstr(8, 0, f"Frames rendered this session: {frame_counter}")
         stdscr.addstr(9, 0, f"Last frame rendered: {frame_name}")
         stdscr.addstr(10, 0, f"Last key pressed: [{last_key_pressed}]")
+        stdscr.addstr(11, 0, f"")
         stdscr.refresh()
 
     # helper: build a 3×3 rotation from axis (3,) and angle (rad)
@@ -361,17 +362,30 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
             #     R = axis_angle_to_matrix(axis, -yaw_step)
             #     current_pose[:3,:3] = np.round(R.dot(current_pose[:3,:3]), digit_rounding)
             #     last_key_pressed = 'e'
+            if key == ord('q'):       # yaw left
+                u = current_pose[:3, :3][:, 1]            # up axis (col 1)
+                f = current_pose[:3, :3][:, 2]            # forward axis (col 2)
+                f_new = axis_angle_to_matrix(u,  yaw_step) @ f
+                f_new = f_new / np.linalg.norm(f_new)
 
-            if key == ord('q'):       # yaw left around world-up
-                axis = np.array([0, 1, 0], dtype=np.float32)
-                R = axis_angle_to_matrix(axis,  yaw_step)
-                current_pose[:3, :3] = np.round(R.dot(current_pose[:3, :3]), digit_rounding)
+                # Recompute right so it's orthogonal:
+                r_new = np.cross(u, f_new)
+                r_new = r_new / np.linalg.norm(r_new)
+
+                current_pose[:3, :3] = np.stack([r_new, u, f_new], axis=1)
                 last_key_pressed = 'q'
-            elif key == ord('e'):     # yaw right around world-up
-                axis = np.array([0, 1, 0], dtype=np.float32)
-                R = axis_angle_to_matrix(axis, -yaw_step)
-                current_pose[:3, :3] = np.round(R.dot(current_pose[:3, :3]), digit_rounding)
-                last_key_pressed = 'e'
+
+            elif key == ord('e'):     # yaw right
+                u = current_pose[:3, :3][:, 1]
+                f = current_pose[:3, :3][:, 2]
+                f_new = axis_angle_to_matrix(u, -yaw_step) @ f
+                f_new = f_new / np.linalg.norm(f_new)
+
+                r_new = np.cross(u, f_new)
+                r_new = r_new / np.linalg.norm(r_new)
+
+                current_pose[:3, :3] = np.stack([r_new, u, f_new], axis=1)
+                last_key_pressed = 'e'            
             # pitch up/down around camera-right axis
             elif key == ord('f'):     # look up
                 right = current_pose[:3,:3][:,0]   # first column
@@ -427,7 +441,7 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
 
             time.sleep(0.05)
 
-        print("\nWaiting for all threads to finish...")
+        print("Waiting for all threads to finish...")
         for t in threads:
             t.join()
         print("All threads finished.")
