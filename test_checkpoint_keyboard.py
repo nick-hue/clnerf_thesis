@@ -183,46 +183,20 @@ class NeRFSystem(torch.nn.Module):
             original_w = camdata[1].width
             original_h = camdata[1].height
 
-        #     # Compute scaling factors from original resolution to new resolution.
-        #     w_factor = w / original_w
-        #     h_factor = h / original_h
-        #     print(f"{w_factor=}")
-        #     print(f"{h_factor=}")
-
-        #     if camdata[1].model == 'SIMPLE_RADIAL':
-        #         original_fx = original_fy = camdata[1].params[0]
-        #         original_cx = camdata[1].params[1]
-        #         original_cy = camdata[1].params[2]
-        #     elif camdata[1].model in ['PINHOLE', 'OPENCV']:
-        #         original_fx = camdata[1].params[0]
-        #         original_fy = camdata[1].params[1]
-        #         original_cx = camdata[1].params[2]
-        #         original_cy = camdata[1].params[3]
-        #     else:
-        #         raise ValueError(f"Unsupported camera model: {camdata[1].model}")
-
-        #     # Scale the intrinsic parameters to adapt to the new resolution.
-        #     fx = original_fx * w_factor
-        #     fy = original_fy * h_factor
-        #     cx = original_cx * w_factor
-        #     cy = original_cy * h_factor
-
         # compute a uniform scale so we don't stretch
         orig_aspect = original_w / original_h
         target_aspect = w / h
 
         if target_aspect > orig_aspect:
-          # target is wider → scale by height, pad left/right
-          scale = h / original_h
-          pad_x = (w - original_w * scale) / 2
-          pad_y = 0
+            scale = h / original_h
+            pad_x = (w - original_w * scale) / 2
+            pad_y = 0
         else:
-          # target is taller (or equal) → scale by width, pad top/bottom
-          scale = w / original_w
-          pad_x = 0
-          pad_y = (h - original_h * scale) / 2
+            scale = w / original_w
+            pad_x = 0
+            pad_y = (h - original_h * scale) / 2
 
-        print(f"uniform scale = {scale:.4f}, pad_x = {pad_x:.1f}, pad_y = {pad_y:.1f}")
+        # print(f"uniform scale = {scale:.4f}, pad_x = {pad_x:.1f}, pad_y = {pad_y:.1f}")
 
         # now scale intrinsics and shift principal point for the padding
         if camdata[1].model == 'SIMPLE_RADIAL':
@@ -242,7 +216,6 @@ class NeRFSystem(torch.nn.Module):
         fy = original_fy * scale
         cx = original_cx * scale + pad_x
         cy = original_cy * scale + pad_y
-
 
         self.img_wh = (w, h)
 
@@ -390,16 +363,6 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
                 continue
 
             # —— ROTATION CONTROLS ——
-            # if key == ord('q'):       # roll left (positive about Z)
-            #     axis = current_pose[:3,:3][:,1]
-            #     R = axis_angle_to_matrix(axis,  yaw_step)
-            #     current_pose[:3,:3] = np.round(R.dot(current_pose[:3,:3]), digit_rounding)
-            #     last_key_pressed = 'q'
-            # elif key == ord('e'):     # roll right (negative about Z)
-            #     axis = current_pose[:3,:3][:,1]
-            #     R = axis_angle_to_matrix(axis, -yaw_step)
-            #     current_pose[:3,:3] = np.round(R.dot(current_pose[:3,:3]), digit_rounding)
-            #     last_key_pressed = 'e'
             if key == ord('q'):       # yaw left
                 u = current_pose[:3, :3][:, 1]            # up axis (col 1)
                 f = current_pose[:3, :3][:, 2]            # forward axis (col 2)
