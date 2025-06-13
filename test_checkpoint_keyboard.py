@@ -309,14 +309,12 @@ def run_experiment(system, custom_pose, experiment_info, output_dir):
 def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), move_step=0.1, zoom_step=0.1, yaw_step=0.1, pitch_step=0.1):
     import curses
     import numpy as np
-    import threading
-
-    
+    import threading    
 
     # current_pose = initial_pose.copy()
     def display_text(stdscr, current_pose, frame_counter, last_key_pressed, frame_name=""):
         stdscr.clear()
-        stdscr.addstr(0, 0, "Interactive Mode: WASD to move; ^/v to zoom in/out, q/e to look left/right, r/f to look up/down; ENTER to render frame from current pose; ESC to exit")
+        stdscr.addstr(0, 0, "Interactive Mode: WASD to move horizontally; ^/v move up/down, q/e to look left/right, r/f to look up/down, t to reset horizontal orientation; ENTER to render frame from current pose; ESC to exit")
         stdscr.addstr(2, 0, f"Render Outputs directory: {output_dir}")
         stdscr.addstr(3, 0, f"Current position: {current_pose[:3, 3]}")
         stdscr.addstr(4, 0, f"Current rotation:\n{current_pose[:3, :3]}")
@@ -365,31 +363,19 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
                 time.sleep(0.05)
                 continue
 
-            # —— ROTATION CONTROLS ——
-            if key == ord('q'):       # yaw left
-                u = current_pose[:3, :3][:, 1]            # up axis (col 1)
-                f = current_pose[:3, :3][:, 2]            # forward axis (col 2)
-                f_new = axis_angle_to_matrix(u,  yaw_step) @ f
-                f_new = f_new / np.linalg.norm(f_new)
-
-                # Recompute right so it's orthogonal:
-                r_new = np.cross(u, f_new)
-                r_new = r_new / np.linalg.norm(r_new)
-
-                current_pose[:3, :3] = np.stack([r_new, u, f_new], axis=1)
+            # —— ORIENTATION CONTROLS ——
+            if key == ord('q'):  # decrease φ: rotate left around global Z
+                Rcw = current_pose[:3, :3]
+                Rphi = axis_angle_to_matrix(np.array([0,0,1],dtype=np.float32),  yaw_step)
+                current_pose[:3, :3] = Rphi @ Rcw
                 last_key_pressed = 'q'
 
-            elif key == ord('e'):     # yaw right
-                u = current_pose[:3, :3][:, 1]
-                f = current_pose[:3, :3][:, 2]
-                f_new = axis_angle_to_matrix(u, -yaw_step) @ f
-                f_new = f_new / np.linalg.norm(f_new)
+            elif key == ord('e'):  # increase φ: rotate right around global Z
+                Rcw = current_pose[:3, :3]
+                Rphi = axis_angle_to_matrix(np.array([0,0,1],dtype=np.float32), -yaw_step)
+                current_pose[:3, :3] = Rphi @ Rcw
+                last_key_pressed = 'e'
 
-                r_new = np.cross(u, f_new)
-                r_new = r_new / np.linalg.norm(r_new)
-
-                current_pose[:3, :3] = np.stack([r_new, u, f_new], axis=1)
-                last_key_pressed = 'e'            
             # pitch up/down around camera-right axis
             elif key == ord('f'):     # look up
                 right = current_pose[:3,:3][:,0]   # first column
@@ -401,48 +387,7 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
                 R = axis_angle_to_matrix(right, -pitch_step)
                 current_pose[:3,:3] = np.round(R.dot(current_pose[:3,:3]), digit_rounding)
                 last_key_pressed = 'r'
-
-            # —— TRANSLATION CONTROLS —— 
-            if key == ord('w'):            # forward
-                current_pose[1,3] = round(current_pose[1,3] - move_step, digit_rounding)
-                last_key_pressed = 'w'
-            elif key == ord('s'):          # backward
-                current_pose[1,3] = round(current_pose[1,3] + move_step, digit_rounding)
-                last_key_pressed = 's'
-            elif key == ord('a'):          # left
-                current_pose[0,3] = round(current_pose[0,3] - move_step, digit_rounding)
-                last_key_pressed = 'a'
-            elif key == ord('d'):          # right
-                current_pose[0,3] = round(current_pose[0,3] + move_step, digit_rounding)
-                last_key_pressed = 'd'     
-            elif key == curses.KEY_UP:     # zoom in
-                current_pose[2,3] = round(current_pose[2,3] + zoom_step, digit_rounding)
-                last_key_pressed = '^'     
-            elif key == curses.KEY_DOWN:   # zoom out
-                current_pose[2,3] = round(current_pose[2,3] - zoom_step, digit_rounding)
-                last_key_pressed = 'v'
-            elif key in (10, 13):          # ENTER
-                last_key_pressed = 'ENTER'
-                frame_counter += 1
-                last_frame_rendered = f"custom_frame_{frame_counter:02d}.png"
-                display_text(
-                    stdscr, current_pose, frame_counter,
-                    last_key_pressed, last_frame_rendered
-                )
-                # render_frame(system, current_pose, output_dir, last_frame_rendered)
-                # Spawn off a background thread to do the heavy lifting:
-                pose_copy = current_pose.copy()
-                t = threading.Thread(
-                    target=render_frame,
-                    args=(system, pose_copy, output_dir, last_frame_rendered),
-                    daemon=True
-                )
-                t.start()
-                threads.append(t)
-            elif key == ord(' '):  # spacebar
-                stored_poses.append(current_pose.copy())
-                last_key_pressed = 'SPACE'
-            elif key == ord('t'):  # level camera: θ → 90°, keep φ
+            elif key == ord('t'):  # oriantation reset
                 # Extract current forward
                 Rcw = current_pose[:3, :3]
                 f = Rcw[:, 2]          # forward vector
@@ -469,6 +414,47 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
                     # Write new rotation [right, up, forward]
                     current_pose[:3, :3] = np.stack([r_new, u_new, f_xy], axis=1)
                     last_key_pressed = 't'
+
+            # —— TRANSLATION CONTROLS —— 
+            if key == ord('w'):            # forward
+                current_pose[1,3] = round(current_pose[1,3] - move_step, digit_rounding)
+                last_key_pressed = 'w'
+            elif key == ord('s'):          # backward
+                current_pose[1,3] = round(current_pose[1,3] + move_step, digit_rounding)
+                last_key_pressed = 's'
+            elif key == ord('a'):          # left
+                current_pose[0,3] = round(current_pose[0,3] - move_step, digit_rounding)
+                last_key_pressed = 'a'
+            elif key == ord('d'):          # right
+                current_pose[0,3] = round(current_pose[0,3] + move_step, digit_rounding)
+                last_key_pressed = 'd'     
+            elif key == curses.KEY_UP:     # zoom in
+                current_pose[2,3] = round(current_pose[2,3] - zoom_step, digit_rounding)
+                last_key_pressed = '^'     
+            elif key == curses.KEY_DOWN:   # zoom out
+                current_pose[2,3] = round(current_pose[2,3] + zoom_step, digit_rounding)
+                last_key_pressed = 'v'
+            elif key in (10, 13):          # ENTER
+                last_key_pressed = 'ENTER'
+                frame_counter += 1
+                last_frame_rendered = f"custom_frame_{frame_counter:02d}.png"
+                display_text(
+                    stdscr, current_pose, frame_counter,
+                    last_key_pressed, last_frame_rendered
+                )
+                # render_frame(system, current_pose, output_dir, last_frame_rendered)
+                # Spawn off a background thread to do the heavy lifting:
+                pose_copy = current_pose.copy()
+                t = threading.Thread(
+                    target=render_frame,
+                    args=(system, pose_copy, output_dir, last_frame_rendered),
+                    daemon=True
+                )
+                t.start()
+                threads.append(t)
+            elif key == ord(' '):  # spacebar
+                stored_poses.append(current_pose.copy())
+                last_key_pressed = 'SPACE'
             elif key == 27:                # ESCAPE, exit session
                 break
 
