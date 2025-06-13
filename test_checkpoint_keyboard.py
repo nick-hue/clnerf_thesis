@@ -242,8 +242,8 @@ def get_initial_pose(starting_angle, radius=1.0, center=np.array([0, 0, 0]), ver
     Each pose is a 4x4 camera-to-world matrix.
     """
     cam_x = center[0] + radius * np.cos(starting_angle)
-    cam_z = center[2] + radius * np.sin(starting_angle)
     cam_y = center[1] + vertical_amplitude * np.sin(starting_angle)
+    cam_z = center[2] + radius * np.sin(starting_angle)
     position = np.array([cam_x, cam_y, cam_z])
     
     forward = (center - position)
@@ -311,6 +311,8 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
     import numpy as np
     import threading
 
+    
+
     # current_pose = initial_pose.copy()
     def display_text(stdscr, current_pose, frame_counter, last_key_pressed, frame_name=""):
         stdscr.clear()
@@ -346,6 +348,7 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
         last_key_pressed = ""
         last_frame_rendered = ""
         digit_rounding = 4
+        stored_poses = []
 
         while True:
             # redraw status
@@ -436,7 +439,36 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
                 )
                 t.start()
                 threads.append(t)
+            elif key == ord(' '):  # spacebar
+                stored_poses.append(current_pose.copy())
+                last_key_pressed = 'SPACE'
+            elif key == ord('t'):  # level camera: θ → 90°, keep φ
+                # Extract current forward
+                Rcw = current_pose[:3, :3]
+                f = Rcw[:, 2]          # forward vector
 
+                # Project forward onto the XY plane (zero Z component)
+                f_xy = f.copy()
+                f_xy[2] = 0.0
+                norm = np.linalg.norm(f_xy)
+                if norm < 1e-6:
+                    # If you're looking almost straight up/down, skip
+                    last_key_pressed = 't'
+                else:
+                    f_xy /= norm      # new forward at θ=90°
+
+                    # Define world-up = Z axis
+                    world_up = np.array([0.0, 0.0, 1.0], dtype=np.float32)
+
+                    # Recompute right & up
+                    r_new = np.cross(world_up, f_xy)
+                    r_new /= np.linalg.norm(r_new)
+                    u_new = np.cross(f_xy, r_new)
+                    u_new /= np.linalg.norm(u_new)
+
+                    # Write new rotation [right, up, forward]
+                    current_pose[:3, :3] = np.stack([r_new, u_new, f_xy], axis=1)
+                    last_key_pressed = 't'
             elif key == 27:                # ESCAPE, exit session
                 break
 
@@ -447,7 +479,7 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
             t.join()
         print("All threads finished.")
 
-        return frame_counter
+        return frame_counter, stored_poses
 
 
     num_frames_rendered = curses.wrapper(curses_loop)
@@ -481,7 +513,8 @@ def main():
     base_output_dir = hparams.base_output_dir
     experiment_dir = os.path.join(base_output_dir, hparams.exp_name)
 
-    starting_angle = 4.71       # starting position of camera pose set to -> (3/2) * pi 
+    # starting_angle = 4.71       # starting position of camera pose set to -> (3/2) * pi 
+    starting_angle = 3.4       # starting position of camera pose set to -> (3/2) * pi 
     radius = 1.5                # get initial pose of the camera in 3D space, controls distance from the center
     vertical_amplitude = 0      # vertical amplitude of the camera orbit, controls height of the camera
     move_step_size = 0.1        # move front/back left/right velocity
@@ -510,9 +543,16 @@ def main():
 
     initial_pose = get_initial_pose(starting_angle=starting_angle, radius=radius, center=np.array([0,0,0]), vertical_amplitude=vertical_amplitude)
     # print(initial_pose)
+    # initial_pose = np.array([[ 0.1 ,-0, 0, -0],
+    #                         [ 0, 1, 0, 0],
+    #                         [ 0, 0, 0.1, -1.5 ],
+    #                         [ 0, 0, 0, 1]],dtype=np.float32)
 
     # Enter interactive mode to adjust the pose with keyboard controls.
-    frames_rendered = interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), move_step=move_step_size, zoom_step=radius_step_size, yaw_step=yaw_step_size, pitch_step=pitch_step_size)    
+    frames_rendered, stored_poses = interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), move_step=move_step_size, zoom_step=radius_step_size, yaw_step=yaw_step_size, pitch_step=pitch_step_size)    
+
+    if stored_poses:
+        print(f"{stored_poses=}")
 
     experiment_info['Rendered Frames'] = frames_rendered
     write_experiment_log(output_dir, experiment_info)

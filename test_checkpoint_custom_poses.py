@@ -1,38 +1,22 @@
 #!/usr/bin/env python
 import torch
-from torch import nn
 import os
 import imageio
 import numpy as np
-import cv2
 from einops import rearrange
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-import datetime
-import os
 
-# Data and model imports from the repo
+# Imports from original rendering script
 from datasets.ray_utils import get_rays
 from models.networks import NGPGv2
-from models.rendering_NGPA import render, MAX_SAMPLES
-from apex.optimizers import FusedAdam
-from torch.optim.lr_scheduler import CosineAnnealingLR
-from losses import NeRFLoss
-from torchmetrics import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
-from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
-
-# Utilities for checkpoint loading and argument parsing
+from models.rendering_NGPA import render
 from utils.utils import load_ckpt
-from opt import get_opts
-
-import warnings
-warnings.filterwarnings("ignore")
-
-
-def depth2img(depth):
-    depth = (depth - depth.min()) / (depth.max() - depth.min() + 1e-8)
-    depth_img = cv2.applyColorMap((depth * 255).astype(np.uint8), cv2.COLORMAP_TURBO)
-    return depth_img
+from opt_renderer import get_opts
+from losses import NeRFLoss
+# from torchmetrics import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
+from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
+from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
 
 class NeRFSystem(torch.nn.Module):
@@ -56,8 +40,11 @@ class NeRFSystem(torch.nn.Module):
 
         rgb_act = 'None' if self.hparams.use_exposure else 'Sigmoid'
         # The vocab_size is set based on task index (for continual learning)
-        self.model = NGPGv2(scale=self.hparams.scale, vocab_size=self.hparams.task_curr+1, 
-                             rgb_act=rgb_act, dim_a=self.hparams.dim_a, dim_g=self.hparams.dim_g)
+        # self.model = NGPGv2(scale=self.hparams.scale, vocab_size=self.hparams.task_curr+1, 
+        #                      rgb_act=rgb_act, dim_a=self.hparams.dim_a, dim_g=self.hparams.dim_g)
+        self.model = NGPGv2(scale=self.hparams.scale,    vocab_size=self.hparams.vocab_size, rgb_act=rgb_act,
+                            dim_a=self.hparams.dim_a,dim_g=self.hparams.dim_g)
+
         G = self.model.grid_size
         self.model.register_buffer('density_grid', torch.zeros(self.model.cascades, G**3))
         from kornia.utils.grid import create_meshgrid3d
@@ -101,151 +88,193 @@ class NeRFSystem(torch.nn.Module):
             'rep_dir': f'results/NGPGv2/CLNerf/{self.hparams.dataset_name}/{self.hparams.exp_name}/rep',
             'nerf_rep': self.hparams.nerf_rep
         }
+        # print('bef loading')
         test_dataset = dataset(split='test', **kwargs)
+        # print('after loading')
         self.directions = test_dataset.directions.to(self.device)
         self.img_wh = test_dataset.img_wh
 
-def write_experiment_log(output_dir, experiment_info):
-    """
-    Write key experiment information to a log file inside output_dir.
-    experiment_info should be a dictionary containing the parameters to log.
-    """
-    log_file = os.path.join(output_dir, "experiment.log")
-    with open(log_file, "w") as f:
-        f.write("Experiment Log\n")
-        f.write("==============\n")
-        for key, value in experiment_info.items():
-            f.write(f"{key}: {value}\n")
-    print(f"Experiment log written to {log_file}")
+    def setup_intrinsics(self, w, h):
+        @torch.cuda.amp.autocast(dtype=torch.float32)
+        def get_ray_directions(H, W, K, device='cpu', random=False, return_uv=False, flatten=True, crop_region = 'full'):
+            """
+            Get ray directions for all pixels in camera coordinate [right down front].
+            Reference: https://www.scratchapixel.com/lessons/3d-basic-rendering/
+                    ray-tracing-generating-camera-rays/standard-coordinate-systems
 
-def generate_custom_poses(num_frames, radius=1.0, center=np.array([0, 0, 0]), vertical_amplitude=0):
-    """
-    Generate an orbit of camera poses around the given center.
-    Each pose is a 4x4 camera-to-world matrix.
-    """
-    poses = []
-    angles = []
-    render_angles = []
-    for i in range(num_frames):
-        angle = 2 * np.pi * i / num_frames
-        angles.append(angle)
+            Inputs:
+                H, W: image height and width
+                K: (3, 3) camera intrinsics
+                random: whether the ray passes randomly inside the pixel
+                return_uv: whether to return uv image coordinates
+
+            Outputs: (shape depends on @flatten)
+                directions: (H, W, 3) or (H*W, 3), the direction of the rays in camera coordinate
+                uv: (H, W, 2) or (H*W, 2) image coordinates
+            """
+            from kornia import create_meshgrid
+            grid = create_meshgrid(H, W, False, device=device)[0] # (H, W, 2)
+            u, v = grid.unbind(-1)
+
+            fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
+            if random:
+                directions = \
+                    torch.stack([(u-cx+torch.rand_like(u))/fx,
+                                (v-cy+torch.rand_like(v))/fy,
+                                torch.ones_like(u)], -1)
+            else: # pass by the center
+                directions = \
+                    torch.stack([(u-cx+0.5)/fx, (v-cy+0.5)/fy, torch.ones_like(u)], -1)
+            
+            if crop_region  == 'left':
+                directions = directions[:, :directions.shape[1]//2]
+
+            elif crop_region == 'right':
+                directions = directions[:, directions.shape[1]//2:]
+
+
+            if flatten:
+                directions = directions.reshape(-1, 3)
+                grid = grid.reshape(-1, 2)
+
+            if return_uv:
+                return directions, grid
+            return directions
         
-        if not (3.24 <= angle <= 6.09):
-            print(f"Skipping frame {i} with angle {angle:.3f}")
-            continue
-        render_angles.append((i, angle))
-
-        # x_offset = 0.5 + i*0.1 # the desired constant shift along x
-        # print(x_offset)
-        # cam_x = center[0] + radius * np.cos(angle) + x_offset
-        cam_x = center[0] + radius * np.cos(angle)
-        cam_z = center[2] + radius * np.sin(angle)
-        cam_y = center[1] + vertical_amplitude * np.sin(angle)
-        position = np.array([cam_x, cam_y, cam_z])
+        # Step 1: read and scale intrinsics (same for all images)
+        from datasets.colmap_utils import read_cameras_binary
+        camdata = read_cameras_binary(os.path.join(self.hparams.root_dir, 'sparse/0/cameras.bin'))
         
-        forward = (center - position)
-        forward = forward / np.linalg.norm(forward)
+        # # Original width and height of the camera
+        if w == -1 and h == -1:
+            w, h = camdata[1].width, camdata[1].height
+            original_w, original_h  = camdata[1].width, camdata[1].height
+            # Read the intrinsic parameters without applying any downsample
+            if camdata[1].model == 'SIMPLE_RADIAL':
+                fx = fy = camdata[1].params[0]
+                cx = camdata[1].params[1]
+                cy = camdata[1].params[2]
+            elif camdata[1].model in ['PINHOLE', 'OPENCV']:
+                fx = camdata[1].params[0]
+                fy = camdata[1].params[1]
+                cx = camdata[1].params[2]
+                cy = camdata[1].params[3]
+            else:
+                raise ValueError(f"Unsupported camera model: {camdata[1].model}")
+        else:
+            original_w = camdata[1].width
+            original_h = camdata[1].height
+
+        # compute a uniform scale so we don't stretch
+        orig_aspect = original_w / original_h
+        target_aspect = w / h
+
+        if target_aspect > orig_aspect:
+            scale = h / original_h
+            pad_x = (w - original_w * scale) / 2
+            pad_y = 0
+        else:
+            scale = w / original_w
+            pad_x = 0
+            pad_y = (h - original_h * scale) / 2
+
+        # print(f"uniform scale = {scale:.4f}, pad_x = {pad_x:.1f}, pad_y = {pad_y:.1f}")
+
+        # now scale intrinsics and shift principal point for the padding
+        if camdata[1].model == 'SIMPLE_RADIAL':
+            original_fx = original_fy = camdata[1].params[0]
+            original_cx = camdata[1].params[1]
+            original_cy = camdata[1].params[2]
+        elif camdata[1].model in ['PINHOLE', 'OPENCV']:
+            original_fx = camdata[1].params[0]
+            original_fy = camdata[1].params[1]
+            original_cx = camdata[1].params[2]
+            original_cy = camdata[1].params[3]
+        else:
+            raise ValueError(f"Unsupported camera model: {camdata[1].model}")
+ 
+        # apply the uniform scale and add the padding offset
+        fx = original_fx * scale
+        fy = original_fy * scale
+        cx = original_cx * scale + pad_x
+        cy = original_cy * scale + pad_y
+
+        self.img_wh = (w, h)
+
+        self.K = torch.FloatTensor([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
+        self.directions = get_ray_directions(h, w, self.K, device=self.device)
         
-        up = np.array([0, 1, 0])
-        right = np.cross(up, forward)
-        right = right / np.linalg.norm(right)
-        up = np.cross(forward, right)
-        
-        R = np.stack([right, up, forward], axis=1)
-        
-        pose = np.eye(4, dtype=np.float32)
-        pose[:3, :3] = R
-        pose[:3, 3] = position
-        poses.append(pose)
-    return poses, angles, render_angles
 
-def get_directories_number(dir):
-    return len(next(os.walk(dir))[1])
-
-def make_dir(exp_info):
-    # Create a unique output directory based on a timestamp to store the rendered frames
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = os.path.join(exp_info['base_output_dir'], timestamp+f"_v{str(exp_info['id'])}")
-    os.makedirs(output_dir, exist_ok=True)
-    return output_dir
-
-def render_frames(system, custom_poses, output_dir):    
-    # Render each custom frame.
-    for i, pose in enumerate(custom_poses):
-        system.eval()
-        with torch.no_grad():
-            batch = {
-                'pose': torch.from_numpy(pose).unsqueeze(0).float().to(system.device),
-                'ts': torch.tensor([0], dtype=torch.int64, device=system.device)
-            }
-            results = system(batch, split='test')
-        
-        w, h_img = system.img_wh
-        rgb_image = rearrange(results['rgb'], '(h w) c -> h w c', h=h_img)
-        rgb_image = (rgb_image.cpu().numpy() * 255).astype(np.uint8)
-        
-        frame_fname = os.path.join(output_dir, f"custom_frame_{i:02d}.png")
-        imageio.imsave(frame_fname, rgb_image)
-        print(f"Custom frame {i:02d} saved to {frame_fname}")
-
-    print(f"{len(custom_poses)} frames successfully rendered at {output_dir}")
-
-
-def run_experiment(system, custom_poses, experiment_info):
-    output_dir = make_dir(experiment_info)
-    # Render frames from generated camera poses
-    render_frames(system, custom_poses, output_dir)
-
-    # Log experiment information
-    write_experiment_log(output_dir, experiment_info)
+def render_frame(system, custom_pose, output_dir, frame_name):    
+    # Render one frame from the provided custom_pose.
+    system.eval()
+    with torch.no_grad():
+        batch = {
+            'pose': torch.from_numpy(custom_pose)[None].to(system.device),
+            'ts':   torch.tensor([system.hparams.task_curr], device=system.device)
+        }
+        results = system(batch, split='test')
+    
+    w, h_img = system.img_wh
+    rgb_image = rearrange(results['rgb'], '(h w) c -> h w c', h=h_img)
+    rgb_image = (rgb_image.cpu().numpy() * 255).astype(np.uint8)
+    
+    frame_fname = os.path.join(output_dir, frame_name)
+    imageio.imsave(frame_fname, rgb_image)
+    print(f"Custom frame -> {frame_fname} <- saved.")
 
 
 def main():
-    # Parse options and update hparams for rendering.
+    # Parse arguments (checkpoint, output settings)
     hparams = get_opts()
     hparams.val_only = True
+    hparams.dataset_name = "colmap_ngpa_CLNerf"
+    hparams.vocab_size = hparams.task_curr + 1
+    hparams.task_number = hparams.vocab_size
+    hparams.scale = 8.0
+
     if not hparams.weight_path:
-        raise ValueError("Please provide a checkpoint path using --weight_path.")
+        raise ValueError("Please provide --weight_path to a pretrained checkpoint.")
     
     system = NeRFSystem(hparams).to('cuda' if torch.cuda.is_available() else 'cpu')
-    system.setup_from_test() # Set up directions and intrinsics using the test dataset.
-    
-    # Load checkpoint weights
+    system.setup_intrinsics(hparams.width, hparams.height)
     load_ckpt(system.model, hparams.weight_path)
-    print("Checkpoint loaded successfully.")
 
-    base_output_dir = "custom_rendered_frames"
-    experiment_id = get_directories_number(base_output_dir) + 1
-    num_frames = 31
-    radius = 1.5
-    # vertical_amplitude = 0.25  * radius
-    vertical_amplitude = 0
+    # List of precomputed poses:
+    stored_poses=[np.array([[ 0.25743583, -0.293     ,  0.9208315 , -1.0036    ],
+       [ 0.9229428 ,  0.3568    , -0.14454007,  0.7       ],
+       [-0.2861879 ,  0.8871    ,  0.36218444, -0.9       ],
+       [ 0.        ,  0.        ,  0.        ,  1.        ]],dtype=np.float32), 
+       np.array([[-0.57538265, -0.4157    ,  0.70441127, -1.0036    ],
+       [ 0.69799995,  0.1993    ,  0.6877827 , -0.9       ],
+       [-0.42629927,  0.8874    ,  0.17538455, -0.55      ],
+       [ 0.        ,  0.        ,  0.        ,  1.        ]],dtype=np.float32), 
+       np.array([[-0.5754, -0.7024,  0.4189, -0.8036],
+       [ 0.698 , -0.1549,  0.6991, -0.9   ],
+       [-0.4263,  0.6946,  0.5793, -1.4   ],
+       [ 0.    ,  0.    ,  0.    ,  1.    ]], dtype=np.float32), 
+       np.array([[-0.9119,  0.154 , -0.3804,  0.6964],
+       [-0.3935, -0.5911,  0.7042, -0.9   ],
+       [-0.1164,  0.7916,  0.5994, -1.    ],
+       [ 0.    ,  0.    ,  0.    ,  1.    ]], dtype=np.float32),
+       np.array([[-0.9693097 ,  0.154     , -0.19166991,  0.3964    ],
+       [-0.24579139, -0.5911    ,  0.7683852 , -0.9       ],
+       [ 0.00503588,  0.7916    ,  0.6106119 , -1.        ],
+       [ 0.        ,  0.        ,  0.        ,  1.        ]], dtype=np.float32)]
 
-    # Generate custom camera poses
-    custom_poses, custom_angles, good_angles = generate_custom_poses(num_frames=num_frames, radius=radius, center=np.array([0, 0, 0]), vertical_amplitude=vertical_amplitude)
-
-    print("All angles")
-    for i, angle in enumerate(custom_angles):
-        print(f"Frame {i:02d} : {angle=}")
-
-    print("Good angles")
-    for i, angle in good_angles:
-        print(f"Frame {i:02d} : {angle=}")
-
-    experiment_info = {
-        "id": experiment_id,
-        "Requested num_frames": num_frames,
-        "Radius": radius,
-        "Vertical Amplitued": vertical_amplitude,
-        "Poses generated": len(custom_poses),
-        "Frames rendered": len(custom_angles),
-        "base_output_dir" : base_output_dir,
-    }
-
-    # print(experiment_info)
-
-    run_experiment(system, custom_poses, experiment_info)
+    # Render each pose
     
+    base_output_dir = hparams.base_output_dir
+    experiment_dir = os.path.join(base_output_dir, f"render_{hparams.exp_name}")
+    os.makedirs(experiment_dir, exist_ok=True)
+    dir_num = len(next(os.walk(experiment_dir))[1])
+    output_dir = os.path.join(experiment_dir, f"task_{hparams.task_curr:02d}_v{dir_num}")
+    os.makedirs(output_dir, exist_ok=True)
+    
+    for idx, pose in enumerate(stored_poses):
+        # print(pose)
+        frame_name = f"pose_{idx:03d}.png"
+        render_frame(system, pose, output_dir, frame_name)
 
 if __name__ == '__main__':
     main()
