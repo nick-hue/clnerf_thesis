@@ -306,7 +306,7 @@ def run_experiment(system, custom_pose, experiment_info, output_dir):
     write_experiment_log(output_dir, experiment_info)
 
 
-def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), move_step=0.1, zoom_step=0.1, yaw_step=0.1, pitch_step=0.1):
+def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), move_step=0.05, zoom_step=0.1, yaw_step=0.1, pitch_step=0.1):
     import curses
     import numpy as np
     import threading    
@@ -416,18 +416,29 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
                     last_key_pressed = 't'
 
             # —— TRANSLATION CONTROLS —— 
-            if key == ord('w'):            # forward
-                current_pose[1,3] = round(current_pose[1,3] - move_step, digit_rounding)
+            forward = current_pose[:3, 2].copy()  # camera forward
+            right   = current_pose[:3, 0].copy()  # camera right
+
+            # project both onto XY plane & normalize
+            forward[2] = 0
+            right[2]   = 0
+            if np.linalg.norm(forward) > 1e-6:
+                forward /= np.linalg.norm(forward)
+            if np.linalg.norm(right) > 1e-6:
+                right /= np.linalg.norm(right)
+
+            if key == ord('w'):            # move forward
+                current_pose[:3, 3] += forward * move_step
                 last_key_pressed = 'w'
-            elif key == ord('s'):          # backward
-                current_pose[1,3] = round(current_pose[1,3] + move_step, digit_rounding)
+            elif key == ord('s'):          # move backward
+                current_pose[:3, 3] -= forward * move_step
                 last_key_pressed = 's'
-            elif key == ord('a'):          # left
-                current_pose[0,3] = round(current_pose[0,3] - move_step, digit_rounding)
+            elif key == ord('a'):          # move left
+                current_pose[:3, 3] -= right * move_step
                 last_key_pressed = 'a'
-            elif key == ord('d'):          # right
-                current_pose[0,3] = round(current_pose[0,3] + move_step, digit_rounding)
-                last_key_pressed = 'd'     
+            elif key == ord('d'):          # move right
+                current_pose[:3, 3] += right * move_step
+                last_key_pressed = 'd'
             elif key == curses.KEY_UP:     # zoom in
                 current_pose[2,3] = round(current_pose[2,3] - zoom_step, digit_rounding)
                 last_key_pressed = '^'     
@@ -503,7 +514,7 @@ def main():
     starting_angle = 3.4       # starting position of camera pose set to -> (3/2) * pi 
     radius = 1.5                # get initial pose of the camera in 3D space, controls distance from the center
     vertical_amplitude = 0      # vertical amplitude of the camera orbit, controls height of the camera
-    move_step_size = 0.1        # move front/back left/right velocity
+    move_step_size = 0.05        # move front/back left/right velocity
     radius_step_size = 0.05     # move up down velocity
     yaw_step_size=0.1           # look left/right velocity
     pitch_step_size=0.1         # look up/down velocity 

@@ -1,31 +1,22 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# export DATA_DIR=/workspace/data/counter_part/counter_1_40/
-# export DATA_DIR=/workspace/data/counter_sm_merged/
-# export DATA_DIR=/workspace/data/drz/
-# export DATA_DIR=/workspace/data/drz_single/
-
-scene_name=counter_shirt_high   # scene name
-# export DATA_DIR=/workspace/data/counter_final/$scene_name/
+scene_name=counter_dark   # scene name
 export DATA_DIR=/workspace/data/counter_final_final/$scene_name/
 
-task_curr=1             # current task number, this is the task that is being trained
+task_curr=0             # current task number, this is the task that is being trained
 task_number=2           # task number has to be the same number as the total number of training parts available
 rep=5                   # replay buffer size (default 10)
-epochs=10               # epochs number during training (default 20)
-batch_size=4096         # batch_size while training (default 8192)
+epochs=30               # epochs number during training (default 20)
+batch_size=2048         # batch_size while training (default 8192)
 downsample=1.0          # downsampling during rendering (default 1.0)
-dim_a=64                # dimension of embeddings (default 48)
+dim_a=48                # dimension of embeddings (default 48)
 dim_g=16                # dimension of geometry embeddings (default 16)
 scale=8.0               # default 8.0
-lr=1e-2                 # default 1e-2
-num_gpus=1
+lr=1e-2                 # learning rate (default 1e-2)
+num_gpus=1              # number of gpus to use (default 1)
 
 experiment_name=${scene_name}_s${scale}_lr${lr}_dima${dim_a}_dimg${dim_g}_r${rep}_e${epochs}_b${batch_size}_d${downsample}_gpu${num_gpus}
-echo Experiment name   : $experiment_name
-#--gpu2_render 
-# drz_s32.0_dima48_dimg16_r5_e10_b4096_d1.0_gpu1
-#       --ray_sampling_strategy same_image \
+echo Experiment name : $experiment_name
 
 python train_ngpgv2_CLNerf.py \
         --root_dir $DATA_DIR \

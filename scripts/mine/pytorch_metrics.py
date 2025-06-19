@@ -107,7 +107,7 @@ def get_all_experiments_data_prefix(prefix, base_dir="logs/NGPGv2_CL/colmap_ngpa
 
 if __name__ == "__main__":
     base_dir = "logs/NGPGv2_CL/colmap_ngpa_CLNerf"
-    experiment_pref = "counter_shirt"
+    experiment_pref = "counter_dark"
 
     # Get all experiments data with the specified prefix
     results = get_all_experiments_data_prefix(prefix=experiment_pref, base_dir=base_dir)
@@ -115,12 +115,12 @@ if __name__ == "__main__":
     # sort by PSNR descending
     results.sort(key=lambda x: x[1], reverse=True)
 
-    # print(f"\n{'Experiment':70s}  {'PSNR':>8s}   {'Loss':>8s}    {'Train Time':>10s}")
-    # print("-"*105)
-    # for name, psnr, loss, ttime in results:
-    #     print(f"{name:70s}   {psnr:8.4f}   {loss:8.4f}   {ttime:>10s}")
+    print(f"\n{'Experiment':70s}  {'PSNR':>8s}   {'Loss':>8s}    {'Train Time':>10s}")
+    print("-"*105)
+    for name, psnr, loss, ttime in results:
+        print(f"{name:70s}   {psnr:8.4f}   {loss:8.4f}   {ttime:>10s}")
 
-    show_experiment(exp_name="counter_shirt_mid", step=10)
-    show_experiment(exp_name="counter_shirt_high", step=10)
+    # show_experiment(exp_name="counter_shirt_", step=10)
+    # show_experiment(exp_name="counter_shirt_high", step=10)
 
 
