@@ -236,25 +236,27 @@ def main():
     if not hparams.weight_path:
         raise ValueError("Please provide --weight_path to a pretrained checkpoint.")
     
+    # initialize the system
     system = NeRFSystem(hparams).to('cuda' if torch.cuda.is_available() else 'cpu')
     system.setup_intrinsics(hparams.width, hparams.height)
     load_ckpt(system.model, hparams.weight_path)
 
     # List of precomputed poses:
-    stored_poses=[np.array([[ 0.5646, -0.6466,  0.5131, -0.5502],
-       [ 0.8253,  0.4423, -0.3509,  0.5   ],
-       [ 0.    ,  0.6217,  0.7833, -1.0333],
-       [ 0.    ,  0.    ,  0.    ,  1.    ]], dtype=np.float32), np.array([[-0.8414, -0.1074,  0.5295, -0.5502],
-       [ 0.5403, -0.1672,  0.8248, -1.    ],
-       [-0.    ,  0.9802,  0.1986, -0.4833],
-       [ 0.    ,  0.    ,  0.    ,  1.    ]], dtype=np.float32), np.array([[-0.9463,  0.155 , -0.2838,  0.5498],
-       [-0.3232, -0.4538,  0.8306, -1.    ],
-       [ 0.    ,  0.8777,  0.4794, -0.7833],
-       [ 0.    ,  0.    ,  0.    ,  1.    ]], dtype=np.float32)]
+    stored_poses=[np.array([[ 0.3893946 , -0.5200431 ,  0.760301  , -0.90613747],
+       [ 0.9210267 ,  0.21991633, -0.32150966,  0.6426044 ],
+       [ 0.        ,  0.8254    ,  0.5646    , -0.9333    ],
+       [ 0.        ,  0.        ,  0.        ,  1.        ]],
+      dtype=np.float32), np.array([[-0.6442    , -0.3667    ,  0.6715    , -0.6835442 ],
+       [ 0.7648    , -0.3088    ,  0.5655    , -0.45933366],
+       [-0.        ,  0.8776    ,  0.4794    , -0.6833    ],
+       [ 0.        ,  0.        ,  0.        ,  1.        ]],
+      dtype=np.float32), np.array([[-0.8085    ,  0.379     , -0.4502    ,  0.5489899 ],
+       [-0.5885    , -0.5208    ,  0.6187    , -0.67564875],
+       [ 0.        ,  0.7649    ,  0.6442    , -0.8333    ],
+       [ 0.        ,  0.        ,  0.        ,  1.        ]],
+      dtype=np.float32)]
 
-
-    # Render each pose
-    
+    # make dir for output
     base_output_dir = hparams.base_output_dir
     experiment_dir = os.path.join(base_output_dir, f"render_{hparams.exp_name}")
     os.makedirs(experiment_dir, exist_ok=True)
@@ -262,6 +264,7 @@ def main():
     output_dir = os.path.join(experiment_dir, f"task_{hparams.task_curr:02d}_v{dir_num}")
     os.makedirs(output_dir, exist_ok=True)
     
+    # Render each pose    
     for idx, pose in enumerate(stored_poses):
         # print(pose)
         frame_name = f"pose_{idx:03d}.png"
