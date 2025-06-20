@@ -18,6 +18,18 @@ from losses import NeRFLoss
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
+def write_experiment_log(output_dir, experiment_info):
+    """
+    Write key experiment information to a log file inside output_dir.
+    experiment_info should be a dictionary containing the parameters to log.
+    """
+    log_file = os.path.join(output_dir, "experiment.log")
+    with open(log_file, "w") as f:
+        f.write("Experiment Log\n")
+        f.write("==============\n")
+        for key, value in experiment_info.items():
+            f.write(f"{key}: {value}\n")
+    print(f"Experiment log written to {log_file}")
 
 class NeRFSystem(torch.nn.Module):
     """
@@ -269,6 +281,16 @@ def main():
         # print(pose)
         frame_name = f"pose_{idx:03d}.png"
         render_frame(system, pose, output_dir, frame_name)
+
+    experiment_info = {
+        "base_output_dir": base_output_dir,
+        "exp_dir": experiment_dir,
+        "exp_name": hparams.exp_name,
+        "Rendered frame width-height" : system.img_wh,
+        "hparams": vars(hparams),
+    }    
+    write_experiment_log(output_dir, experiment_info)
+
 
 if __name__ == '__main__':
     main()
