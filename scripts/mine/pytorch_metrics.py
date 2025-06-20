@@ -1,126 +1,101 @@
+#!/usr/bin/env python3
 import os
 import glob
-from tensorboard.backend.event_processing import event_accumulator
 import time
+import argparse
+from tensorboard.backend.event_processing import event_accumulator
 
-def get_training_time(ea):
-    start_time = ea.Scalars("train/psnr")[0].wall_time
-    end_time = ea.Scalars("train/psnr")[-1].wall_time
-    duration = end_time - start_time
-    duration_str = time.strftime("%H:%M:%S", time.gmtime(duration))
+def load_event_file(event_file):
+    ea = event_accumulator.EventAccumulator(
+        event_file,
+        size_guidance={event_accumulator.SCALARS: 0},
+    )
+    ea.Reload()
+    return ea
 
-    return duration_str
+def pick_latest_event(version_dir):
+    evs = sorted(glob.glob(os.path.join(version_dir, "events.out.tfevents*")))
+    return evs[-1] if evs else None
 
-def show_experiment(exp_name, step=1):
-    for exp_dir in os.listdir(base_dir):
-        if not exp_dir.startswith(exp_name):
+def get_versions(exp_path, all_versions):
+    versions = sorted(glob.glob(os.path.join(exp_path, "version_*")))
+    return versions if all_versions else versions[-1:]
+
+def format_duration(seconds):
+    return time.strftime("%H:%M:%S", time.gmtime(seconds))
+
+def show_summary(base_dir, exp_prefix, all_versions):
+    rows = []
+    for exp_dir in sorted(os.listdir(base_dir)):
+        if not exp_dir.startswith(exp_prefix):
             continue
+        exp_path = os.path.join(base_dir, exp_dir)
 
+        for version in get_versions(exp_path, all_versions):
+            ev_file = pick_latest_event(version)
+            if not ev_file:
+                continue
 
-        # pick the latest version folder
-        versions = sorted(glob.glob(os.path.join(base_dir, exp_dir, "version_*")))
-        if not versions:
-            continue
-        version = versions[-1]
+            try:
+                ea = load_event_file(ev_file)
+            except Exception as e:
+                print(f"⚠️  Failed to load {ev_file}: {e}")
+                continue
 
-        # pick the newest events file
-        evs = sorted(glob.glob(os.path.join(version, "events.out.tfevents*")))
-        if not evs:
-            continue
-        event_file = evs[-1]
+            tags = ea.Tags().get("scalars", [])
+            # skip if required tags not present
+            if "train/psnr" not in tags or "train/loss" not in tags:
+                continue
 
+            ps_entries = ea.Scalars("train/psnr")
+            ls_entries = ea.Scalars("train/loss")
+            if not ps_entries or not ls_entries:
+                continue
 
-        try:
-            ea = event_accumulator.EventAccumulator(
-                event_file,
-                size_guidance={event_accumulator.SCALARS: 0},
-            )
-            ea.Reload()
-        except Exception as e:
-            print(f"Failed to load {event_file}: {e}")
-            continue
-        break
+            # median of last 50 values
+            last50_ps   = [e.value for e in ps_entries][-50:]
+            last50_ls   = [e.value for e in ls_entries][-50:]
+            median_ps   = sorted(last50_ps)[len(last50_ps)//2]
+            median_ls   = sorted(last50_ls)[len(last50_ls)//2]
 
-    print("-" * 54)
-    print(f"| Step  | {"PSNR":20} | Wall time {" "*11}|")
-    print("-" * 54)
-    for e in ea.Scalars("train/psnr")[::step]:
-        print(f"|{e.step:>6} | {e.value:>20} | {e.wall_time:20} |")
-    print("-" * 54)
+            # compute training duration
+            start = ps_entries[0].wall_time
+            end   = ps_entries[-1].wall_time
+            duration = format_duration(end - start)
 
-    training_time = get_training_time(ea) 
-    print(f"Experiment: {exp_name}, Training Time: {training_time}")
+            rows.append((
+                f"{exp_dir}/{os.path.basename(version)}",
+                median_ps, median_ls, duration
+            ))
 
-
-def get_all_experiments_data_prefix(prefix, base_dir="logs/NGPGv2_CL/colmap_ngpa_CLNerf"):
-
-    results = []
-    for exp_dir in os.listdir(base_dir):
-        if not exp_dir.startswith(experiment_pref):
-            continue
-
-        # pick the latest version folder
-        versions = sorted(glob.glob(os.path.join(base_dir, exp_dir, "version_*")))
-        if not versions:
-            continue
-        version = versions[-1]
-
-        # pick the newest events file
-        evs = sorted(glob.glob(os.path.join(version, "events.out.tfevents*")))
-        if not evs:
-            continue
-        event_file = evs[-1]
-
-        try:
-            ea = event_accumulator.EventAccumulator(
-                event_file,
-                size_guidance={event_accumulator.SCALARS: 0},
-            )
-            ea.Reload()
-        except Exception as e:
-            print(f"Failed to load {event_file}: {e}")
-            continue
-
-        tags = ea.Tags()["scalars"]
-        if "train/psnr" not in tags or "train/loss" not in tags:
-            continue
-
-        # median PSNR
-        last_n   = 50
-        psnrs    = [e.value for e in ea.Scalars("train/psnr")[-last_n:]]
-        median_psnr = sorted(psnrs)[len(psnrs)//2] if psnrs else float('nan')
-
-        # median loss
-        losses   = [e.value for e in ea.Scalars("train/loss")[-last_n:]]
-        median_loss = sorted(losses)[len(losses)//2] if losses else float('nan')
-
-        # training time
-        t_time = "N/A"
-        try:
-            t_time = get_training_time(ea)
-        except Exception as e:
-            print(f"Failed to get training time for {exp_dir}: {e}")    
-
-        results.append((exp_dir, median_psnr, median_loss, t_time))
-
-    return results
-
-if __name__ == "__main__":
-    base_dir = "logs/NGPGv2_CL/colmap_ngpa_CLNerf"
-    experiment_pref = "counter_dark"
-
-    # Get all experiments data with the specified prefix
-    results = get_all_experiments_data_prefix(prefix=experiment_pref, base_dir=base_dir)
+    if not rows:
+        print(f"No matching experiments under '{base_dir}' starting with '{exp_prefix}'")
+        return
 
     # sort by PSNR descending
-    results.sort(key=lambda x: x[1], reverse=True)
-
-    print(f"\n{'Experiment':70s}  {'PSNR':>8s}   {'Loss':>8s}    {'Train Time':>10s}")
-    print("-"*105)
-    for name, psnr, loss, ttime in results:
-        print(f"{name:70s}   {psnr:8.4f}   {loss:8.4f}   {ttime:>10s}")
-
-    # show_experiment(exp_name="counter_shirt_", step=10)
-    # show_experiment(exp_name="counter_shirt_high", step=10)
+    rows.sort(key=lambda x: x[1], reverse=True)
 
 
+    # print table
+    print(f"\n{'Experiment (version)':40s}  {'PSNR':>8s}   {'Loss':>8s}   {'Time':>8s}")
+    print("-" * 70)
+    for name, psnr, loss, ttime in rows:
+        print(f"{name:40s}   {psnr:8.4f}   {loss:8.4f}   {ttime:>8s}")
+
+def main():
+    p = argparse.ArgumentParser(
+        description="Summarize median PSNR/loss & training time from TensorBoard logs."
+    )
+    p.add_argument("experiment_prefix",
+                   help="only process experiment dirs starting with this")
+    p.add_argument("-b", "--base-dir",
+                   default="logs/NGPGv2_CL/colmap_ngpa_CLNerf",
+                   help="root directory containing versioned TensorBoard logs")
+    p.add_argument("-a", "--all-versions", action="store_true",
+                   help="include all version_* subdirs instead of only the latest")
+    args = p.parse_args()
+
+    show_summary(args.base_dir, args.experiment_prefix, args.all_versions)
+
+if __name__ == "__main__":
+    main()
