@@ -22,6 +22,10 @@ def get_opts():
                         type=int,
                         default=-1,
                         help='height of the output rendered images')
+    parser.add_argument('--poses_path',
+                        type=str,
+                        default=None,
+                        help='path of the precalculated poses')
 
 
 
@@ -55,7 +59,7 @@ def get_opts():
     parser.add_argument(
         '--scale',
         type=float,
-        default=0.5,
+        default=8.0,
         help='scene scale (whole scene must lie in [-scale, scale]^3')
     parser.add_argument('--use_exposure',
                         action='store_true',

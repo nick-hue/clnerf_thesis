@@ -77,10 +77,10 @@ def show_summary(base_dir, exp_prefix, all_versions):
 
 
     # print table
-    print(f"\n{'Experiment (version)':40s}  {'PSNR':>8s}   {'Loss':>8s}   {'Time':>8s}")
-    print("-" * 70)
+    print(f"\n{'Experiment (version)':75}  {'PSNR':>8s}   {'Loss':>8s}   {'Time':>8s}")
+    print("-" * 110)
     for name, psnr, loss, ttime in rows:
-        print(f"{name:40s}   {psnr:8.4f}   {loss:8.4f}   {ttime:>8s}")
+        print(f"{name:75s}   {psnr:8.4f}   {loss:8.4f}   {ttime:>8s}")
 
 def main():
     p = argparse.ArgumentParser(

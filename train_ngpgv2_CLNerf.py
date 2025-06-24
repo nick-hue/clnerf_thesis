@@ -193,8 +193,15 @@ class NeRFSystem(LightningModule):
                                         self.train_dataset.img_wh)
 
     def training_step(self, batch, batch_nb, *args):
-        if self.global_step%self.update_interval == 0:
-            self.model.update_density_grid(0.01*MAX_SAMPLES/3**0.5,
+
+        # if self.global_step%self.update_interval == 0:
+        #     self.model.update_density_grid(0.01*MAX_SAMPLES/3**0.5,
+        #                                    warmup=self.global_step<self.warmup_steps,
+        #                                    erode=self.hparams.dataset_name=='colmap')
+        max_samples = 8192  # default is 1024
+        interval = 2        # default is 16
+        if self.global_step%interval == 0:
+            self.model.update_density_grid(0.01*max_samples/3**0.5,
                                            warmup=self.global_step<self.warmup_steps,
                                            erode=self.hparams.dataset_name=='colmap')
 
@@ -363,7 +370,7 @@ if __name__ == '__main__':
                         devices=hparams.num_gpus,
                         strategy=strategy,
                         precision=16,
-                        limit_val_batches=0,        # don’t run any validation batches
+                        limit_val_batches=0.1,        # don’t run any validation batches
                         num_sanity_val_steps=0,     # don’t even do sanity‐check val steps at startup
                         val_check_interval=1.0,     # no mid‐epoch validation
                         # limit_test_batches=0,     # don’t run any test batches
@@ -378,7 +385,7 @@ if __name__ == '__main__':
                         devices=hparams.num_gpus,
                         strategy=strategy,
                         precision=16,
-                        limit_val_batches=0,    # don’t run any validation batches
+                        limit_val_batches=0.1,    # don’t run any validation batches
                         num_sanity_val_steps=0, # don’t even do sanity‐check val steps at startup
                         val_check_interval=1.0,           # no mid‐epoch validation
                         # limit_test_batches=0,   # don’t run any test batches

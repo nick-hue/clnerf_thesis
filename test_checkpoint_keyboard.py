@@ -223,7 +223,7 @@ class NeRFSystem(torch.nn.Module):
         self.directions = get_ray_directions(h, w, self.K, device=self.device)
         
 
-def write_experiment_log(output_dir, experiment_info):
+def write_log(output_dir, experiment_info):
     """
     Write key experiment information to a log file inside output_dir.
     experiment_info should be a dictionary containing the parameters to log.
@@ -234,7 +234,7 @@ def write_experiment_log(output_dir, experiment_info):
         f.write("==============\n")
         for key, value in experiment_info.items():
             f.write(f"{key}: {value}\n")
-    print(f"Experiment log written to {log_file}")
+    print(f"Render log written to {log_file}")
 
 def get_initial_pose(starting_angle, radius=1.0, center=np.array([0, 0, 0]), vertical_amplitude=0):
     """
@@ -303,7 +303,7 @@ def run_experiment(system, custom_pose, experiment_info, output_dir):
     # Render frame from the provided custom_pose.
     render_frame(system, custom_pose, output_dir)
     # Log experiment information.
-    write_experiment_log(output_dir, experiment_info)
+    write_log(output_dir, experiment_info)
 
 
 def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), move_step=0.05, zoom_step=0.1, yaw_step=0.1, pitch_step=0.1):
@@ -312,16 +312,17 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
     import threading    
 
     # current_pose = initial_pose.copy()
-    def display_text(stdscr, current_pose, frame_counter, last_key_pressed, frame_name=""):
+    def display_text(stdscr, current_pose, frame_counter, last_key_pressed, frame_name="", stored_poses=[]):
         stdscr.clear()
         stdscr.addstr(0, 0, "Interactive Mode: WASD to move horizontally; ^/v move up/down, q/e to look left/right, r/f to look up/down, t to reset horizontal orientation; ENTER to render frame from current pose; ESC to exit")
         stdscr.addstr(2, 0, f"Render Outputs directory: {output_dir}")
         stdscr.addstr(3, 0, f"Current position: {current_pose[:3, 3]}")
         stdscr.addstr(4, 0, f"Current rotation:\n{current_pose[:3, :3]}")
         stdscr.addstr(8, 0, f"Frames rendered this session: {frame_counter}")
-        stdscr.addstr(9, 0, f"Last frame rendered: {frame_name}")
-        stdscr.addstr(10, 0, f"Last key pressed: [{last_key_pressed}]")
-        stdscr.addstr(11, 0, f"")
+        stdscr.addstr(9, 0, f"Poses saved this session: {len(stored_poses)}")
+        stdscr.addstr(10, 0, f"Last frame rendered: {frame_name}")
+        stdscr.addstr(11, 0, f"Last key pressed: [{last_key_pressed}]")
+        stdscr.addstr(12, 0, f"")
         stdscr.refresh()
 
     # helper: build a 3×3 rotation from axis (3,) and angle (rad)
@@ -355,7 +356,8 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
                 current_pose=current_pose,
                 frame_counter=frame_counter,
                 last_key_pressed=last_key_pressed,
-                frame_name=last_frame_rendered
+                frame_name=last_frame_rendered,
+                stored_poses=stored_poses
             )
 
             key = stdscr.getch()
@@ -451,7 +453,7 @@ def interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]),
                 last_frame_rendered = f"custom_frame_{frame_counter:02d}.png"
                 display_text(
                     stdscr, current_pose, frame_counter,
-                    last_key_pressed, last_frame_rendered
+                    last_key_pressed, last_frame_rendered, stored_poses
                 )
                 # render_frame(system, current_pose, output_dir, last_frame_rendered)
                 # Spawn off a background thread to do the heavy lifting:
@@ -491,7 +493,7 @@ def main():
     hparams.dataset_name = "colmap_ngpa_CLNerf"
     hparams.vocab_size = hparams.task_curr + 1
     hparams.task_number = hparams.vocab_size
-    hparams.scale = 8.0
+    # hparams.scale = 8.0
 
     # print(f"{hparams=}")
 
@@ -539,11 +541,6 @@ def main():
     output_dir = make_dir(experiment_info)
 
     initial_pose = get_initial_pose(starting_angle=starting_angle, radius=radius, center=np.array([0,0,0]), vertical_amplitude=vertical_amplitude)
-    # print(initial_pose)
-    # initial_pose = np.array([[ 0.1 ,-0, 0, -0],
-    #                         [ 0, 1, 0, 0],
-    #                         [ 0, 0, 0.1, -1.5 ],
-    #                         [ 0, 0, 0, 1]],dtype=np.float32)
 
     # Enter interactive mode to adjust the pose with keyboard controls.
     frames_rendered, stored_poses = interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), move_step=move_step_size, zoom_step=radius_step_size, yaw_step=yaw_step_size, pitch_step=pitch_step_size)    
@@ -551,8 +548,17 @@ def main():
     if stored_poses:
         print(f"{stored_poses=}")
 
+        poses_filename = f'stored_poses_{experiment_info["exp_name"]}.npy'
+        final_poses_path = os.path.join(output_dir, poses_filename)
+        
+        np.save(final_poses_path, stored_poses)
+        print(f"Stored poses saved to [{final_poses_path}].")
+        experiment_info['Stored Poses'] = len(stored_poses)
+        experiment_info['poses_filename'] = poses_filename
+        experiment_info['poses_file_path'] = final_poses_path
+
     experiment_info['Rendered Frames'] = frames_rendered
-    write_experiment_log(output_dir, experiment_info)
+    write_log(output_dir, experiment_info)
     
 
 if __name__ == '__main__':

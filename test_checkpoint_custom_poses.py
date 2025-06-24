@@ -18,7 +18,7 @@ from losses import NeRFLoss
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
-def write_experiment_log(output_dir, experiment_info):
+def write_log(output_dir, experiment_info):
     """
     Write key experiment information to a log file inside output_dir.
     experiment_info should be a dictionary containing the parameters to log.
@@ -29,7 +29,7 @@ def write_experiment_log(output_dir, experiment_info):
         f.write("==============\n")
         for key, value in experiment_info.items():
             f.write(f"{key}: {value}\n")
-    print(f"Experiment log written to {log_file}")
+    print(f"Render log written to {log_file}")
 
 class NeRFSystem(torch.nn.Module):
     """
@@ -243,7 +243,7 @@ def main():
     hparams.dataset_name = "colmap_ngpa_CLNerf"
     hparams.vocab_size = hparams.task_curr + 1
     hparams.task_number = hparams.vocab_size
-    hparams.scale = 8.0
+    # hparams.scale = 8.0
 
     if not hparams.weight_path:
         raise ValueError("Please provide --weight_path to a pretrained checkpoint.")
@@ -253,20 +253,41 @@ def main():
     system.setup_intrinsics(hparams.width, hparams.height)
     load_ckpt(system.model, hparams.weight_path)
 
-    # List of precomputed poses:
-    stored_poses=[np.array([[ 0.3893946 , -0.5200431 ,  0.760301  , -0.90613747],
-       [ 0.9210267 ,  0.21991633, -0.32150966,  0.6426044 ],
-       [ 0.        ,  0.8254    ,  0.5646    , -0.9333    ],
-       [ 0.        ,  0.        ,  0.        ,  1.        ]],
-      dtype=np.float32), np.array([[-0.6442    , -0.3667    ,  0.6715    , -0.6835442 ],
-       [ 0.7648    , -0.3088    ,  0.5655    , -0.45933366],
-       [-0.        ,  0.8776    ,  0.4794    , -0.6833    ],
-       [ 0.        ,  0.        ,  0.        ,  1.        ]],
-      dtype=np.float32), np.array([[-0.8085    ,  0.379     , -0.4502    ,  0.5489899 ],
-       [-0.5885    , -0.5208    ,  0.6187    , -0.67564875],
-       [ 0.        ,  0.7649    ,  0.6442    , -0.8333    ],
-       [ 0.        ,  0.        ,  0.        ,  1.        ]],
-      dtype=np.float32)]
+    # Load precomputed poses:
+    loaded_poses = np.load(hparams.poses_path, allow_pickle=True)   
+
+    # stored_poses=[np.array([[ 0.9635    , -0.2095    ,  0.1662    ,  0.18651286],
+    #    [ 0.2675    ,  0.7549    , -0.599     ,  0.3847468 ],
+    #    [ 0.        ,  0.6216    ,  0.7832    , -0.9333    ],
+    #    [ 0.        ,  0.        ,  0.        ,  1.        ]],
+    #   dtype=np.float32), np.array([[ 0.5645972 , -0.6465544 ,  0.5130031 , -0.17849863],
+    #    [ 0.82529914,  0.4424158 , -0.3510715 ,  0.13555017],
+    #    [ 0.        ,  0.6216    ,  0.7832    , -0.9333    ],
+    #    [ 0.        ,  0.        ,  0.        ,  1.        ]],
+    #   dtype=np.float32), np.array([[-0.2955    , -0.6157    ,  0.7306    , -0.41587812],
+    #    [ 0.9553    , -0.1903    ,  0.2259    , -0.3408056 ],
+    #    [-0.        ,  0.7649    ,  0.6441    , -0.7833    ],
+    #    [ 0.        ,  0.        ,  0.        ,  1.        ]],
+    #   dtype=np.float32), np.array([[-0.9995332 ,  0.018666  , -0.02223311,  0.2723428 ],
+    #    [-0.02918967, -0.64416796,  0.7644036 , -0.97983986],
+    #    [ 0.        ,  0.7649    ,  0.6441    , -0.7833    ],
+    #    [ 0.        ,  0.        ,  0.        ,  1.        ]],
+    #   dtype=np.float32), np.array([[-0.4274    ,  0.5107    , -0.7459    ,  1.1107528 ],
+    #    [-0.904     , -0.2415    ,  0.3528    , -0.64046997],
+    #    [-0.        ,  0.8254    ,  0.5645    , -0.8333    ],
+    #    [ 0.        ,  0.        ,  0.        ,  1.        ]],
+    #   dtype=np.float32), np.array([[ 0.68769175,  0.41014358, -0.5991062 ,  0.931634  ],
+    #    [-0.725925  ,  0.388483  , -0.56736815,  0.31625235],
+    #    [ 0.        ,  0.8254    ,  0.5645    , -0.8333    ],
+    #    [ 0.        ,  0.        ,  0.        ,  1.        ]],
+    #   dtype=np.float32), np.array([[ 0.9160946 ,  0.22648486, -0.33086982,  0.6909284 ],
+    #    [-0.40082154,  0.51753396, -0.7558836 ,  0.57034045],
+    #    [ 0.        ,  0.8254    ,  0.5645    , -0.8333    ],
+    #    [ 0.        ,  0.        ,  0.        ,  1.        ]],
+    #   dtype=np.float32)]
+    # print(f"{loaded_poses=}")
+    # print(f"{stored_poses=}")
+    # print(loaded_poses == stored_poses)
 
     # make dir for output
     base_output_dir = hparams.base_output_dir
@@ -277,7 +298,7 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
     
     # Render each pose    
-    for idx, pose in enumerate(stored_poses):
+    for idx, pose in enumerate(loaded_poses):
         # print(pose)
         frame_name = f"pose_{idx:03d}.png"
         render_frame(system, pose, output_dir, frame_name)
@@ -289,7 +310,7 @@ def main():
         "Rendered frame width-height" : system.img_wh,
         "hparams": vars(hparams),
     }    
-    write_experiment_log(output_dir, experiment_info)
+    write_log(output_dir, experiment_info)
 
 
 if __name__ == '__main__':
