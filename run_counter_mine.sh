@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
 
-scene_name=drz   # scene name
+scene_name=counter_update_only   # scene name
 # export DATA_DIR=/workspace/data/counter_final_final/$scene_name/
 export DATA_DIR=/workspace/data/$scene_name/
 
-task_curr=1             # current task number, this is the task that is being trained
-task_number=2           # task number has to be the same number as the total number of training parts available
+task_curr=0             # current task number, this is the task that is being trained
+task_number=1           # task number has to be the same number as the total number of training parts available
 rep=5                   # replay buffer size (default 10)
-epochs=30               # epochs number during training (default 20)
+epochs=10               # epochs number during training (default 20)
 batch_size=4096         # batch_size while training (default 8192)
 downsample=1.0          # downsampling during rendering (default 1.0)
-dim_a=64                # dimension of embeddings (default 48)
-dim_g=32                # dimension of geometry embeddings (default 16)
-scale=32.0               # default 8.0
+dim_a=48                # dimension of embeddings (default 48)
+dim_g=16                # dimension of geometry embeddings (default 16)
+scale=4.0               # default 8.0
 lr=1e-2                 # learning rate (default 1e-2)
 num_gpus=1              # number of gpus to use (default 1)
 
-experiment_name=${scene_name}_testing_same_s${scale}_lr${lr}_dima${dim_a}_dimg${dim_g}_r${rep}_e${epochs}_b${batch_size}_d${downsample}_gpu${num_gpus}
+experiment_name=${scene_name}_s${scale}_lr${lr}_dima${dim_a}_dimg${dim_g}_r${rep}_e${epochs}_b${batch_size}_d${downsample}_gpu${num_gpus}
 # experiment_name=counter_dark_s8.0_lr1e-2_dima48_dimg16_r5_e20_b8192_d1.0_gpu1
 echo Experiment name : $experiment_name
 

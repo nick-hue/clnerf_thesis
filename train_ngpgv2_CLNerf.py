@@ -130,6 +130,7 @@ class NeRFSystem(LightningModule):
         self.train_dataset.ray_sampling_strategy = self.hparams.ray_sampling_strategy
 
         # self.test_dataset = dataset(split='test', **kwargs)
+        # self.test_dataset = None
         self.rep_dataset = dataset(split='rep', **kwargs)
 
     def configure_optimizers(self):
@@ -370,7 +371,7 @@ if __name__ == '__main__':
                         devices=hparams.num_gpus,
                         strategy=strategy,
                         precision=16,
-                        limit_val_batches=0.1,        # don’t run any validation batches
+                        limit_val_batches=0,        # don’t run any validation batches
                         num_sanity_val_steps=0,     # don’t even do sanity‐check val steps at startup
                         val_check_interval=1.0,     # no mid‐epoch validation
                         # limit_test_batches=0,     # don’t run any test batches
@@ -385,7 +386,7 @@ if __name__ == '__main__':
                         devices=hparams.num_gpus,
                         strategy=strategy,
                         precision=16,
-                        limit_val_batches=0.1,    # don’t run any validation batches
+                        limit_val_batches=0,    # don’t run any validation batches
                         num_sanity_val_steps=0, # don’t even do sanity‐check val steps at startup
                         val_check_interval=1.0,           # no mid‐epoch validation
                         # limit_test_batches=0,   # don’t run any test batches
