@@ -298,13 +298,16 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
     
     # Render each pose    
+    print(f"Rendering {len(loaded_poses)} frames to {output_dir} ...")
     for idx, pose in enumerate(loaded_poses):
         # print(pose)
         frame_name = f"pose_{idx:03d}.png"
         render_frame(system, pose, output_dir, frame_name)
+    print("Rendering completed.")
 
     experiment_info = {
         "base_output_dir": base_output_dir,
+        "root_dir": hparams.root_dir,
         "exp_dir": experiment_dir,
         "exp_name": hparams.exp_name,
         "Rendered frame width-height" : system.img_wh,

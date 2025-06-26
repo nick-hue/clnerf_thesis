@@ -195,16 +195,16 @@ class NeRFSystem(LightningModule):
 
     def training_step(self, batch, batch_nb, *args):
 
-        # if self.global_step%self.update_interval == 0:
-        #     self.model.update_density_grid(0.01*MAX_SAMPLES/3**0.5,
-        #                                    warmup=self.global_step<self.warmup_steps,
-        #                                    erode=self.hparams.dataset_name=='colmap')
-        max_samples = 8192  # default is 1024
-        interval = 2        # default is 16
-        if self.global_step%interval == 0:
-            self.model.update_density_grid(0.01*max_samples/3**0.5,
+        if self.global_step%self.update_interval == 0:
+            self.model.update_density_grid(0.01*MAX_SAMPLES/3**0.5,
                                            warmup=self.global_step<self.warmup_steps,
                                            erode=self.hparams.dataset_name=='colmap')
+        # max_samples = 8192  # default is 1024
+        # interval = 2        # default is 16
+        # if self.global_step%interval == 0:
+        #     self.model.update_density_grid(0.01*max_samples/3**0.5,
+        #                                    warmup=self.global_step<self.warmup_steps,
+        #                                    erode=self.hparams.dataset_name=='colmap')
 
         results = self(batch, split='train')
         loss_d = self.loss(results, batch)

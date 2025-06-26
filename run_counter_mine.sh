@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 
-scene_name=counter_update_only   # scene name
-# export DATA_DIR=/workspace/data/counter_final_final/$scene_name/
-export DATA_DIR=/workspace/data/$scene_name/
+scene_name=counter_330   # scene name
 
-task_curr=0             # current task number, this is the task that is being trained
-task_number=1           # task number has to be the same number as the total number of training parts available
+# export DATA_DIR=/workspace/data/counter_final_final/$scene_name/
+export DATA_DIR=/workspace/data/counter_more/$scene_name/
+
+task_curr=1             # current task number, this is the task that is being trained
+task_number=2           # task number has to be the same number as the total number of training parts available
 rep=5                   # replay buffer size (default 10)
 epochs=10               # epochs number during training (default 20)
 batch_size=4096         # batch_size while training (default 8192)
 downsample=1.0          # downsampling during rendering (default 1.0)
 dim_a=48                # dimension of embeddings (default 48)
 dim_g=16                # dimension of geometry embeddings (default 16)
-scale=4.0               # default 8.0
+scale=8.0               # default 8.0
 lr=1e-2                 # learning rate (default 1e-2)
 num_gpus=1              # number of gpus to use (default 1)
 

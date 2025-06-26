@@ -523,6 +523,7 @@ def main():
 
     experiment_info = {
         "base_output_dir": base_output_dir,
+        "root_dir": hparams.root_dir,
         "exp_dir": experiment_dir,
         "exp_name": hparams.exp_name,
         "starting_angle" : starting_angle,

@@ -11,6 +11,8 @@ custom_rendered_frames/
 *.png
 .vscode
 tb_logs
+find_poses/
+final_poses/
 
 results
 results/
