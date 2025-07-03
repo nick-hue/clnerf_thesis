@@ -513,9 +513,10 @@ def main():
     experiment_dir = os.path.join(base_output_dir, hparams.exp_name)
 
     # starting_angle = 4.71       # starting position of camera pose set to -> (3/2) * pi 
-    starting_angle = 3.4       # starting position of camera pose set to -> (3/2) * pi 
-    radius = 1.5                # get initial pose of the camera in 3D space, controls distance from the center
-    vertical_amplitude = 0      # vertical amplitude of the camera orbit, controls height of the camera
+    starting_angle = 3       # starting position of camera pose set to -> (3/2) * pi 
+    radius = 0.005               # get initial pose of the camera in 3D space, controls distance from the center
+    
+    vertical_amplitude = 0.5     
     move_step_size = 0.05        # move front/back left/right velocity
     radius_step_size = 0.05     # move up down velocity
     yaw_step_size=0.1           # look left/right velocity
@@ -541,8 +542,17 @@ def main():
     }    
     output_dir = make_dir(experiment_info)
 
-    initial_pose = get_initial_pose(starting_angle=starting_angle, radius=radius, center=np.array([0,0,0]), vertical_amplitude=vertical_amplitude)
+    # initial_pose = get_initial_pose(starting_angle=starting_angle, radius=radius, center=np.array([0,0,0]), vertical_amplitude=vertical_amplitude)
 
+
+    initial_pose = np.array([
+    [ 0.01845724,  0.99786556,  0.06263913,  1.0623664 ],
+    [-0.9962703 ,  0.01307374,  0.08529112,  1.3362916 ],
+    [ 0.08429014, -0.06397974,  0.9943851 , -0.8863028 ],
+    [ 0.        ,  0.        ,  0.        ,  1.        ]
+    ], dtype=np.float32)
+
+                                
     # Enter interactive mode to adjust the pose with keyboard controls.
     frames_rendered, stored_poses = interactive_mode(system, initial_pose, output_dir, center=np.array([0,0,0]), move_step=move_step_size, zoom_step=radius_step_size, yaw_step=yaw_step_size, pitch_step=pitch_step_size)    
 

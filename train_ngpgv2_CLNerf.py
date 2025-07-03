@@ -290,6 +290,18 @@ class NeRFSystem(LightningModule):
     def test_step(self, batch, batch_nb):
         rgb_gt = batch['rgb']
         fname = batch['fname']
+
+        # => FETCH THE CURRENT POSE
+        # batch['pose'] will be a (4×4) tensor (or shaped [1,4,4])
+        pose = batch['pose']
+        pose_np = pose.detach().cpu().numpy()
+        # print(f"[test_step] Saving {fname} with pose:\n{pose_np}")
+
+        txt_path = os.path.join(self.rep_dir, "poses.txt")
+        with open(txt_path, "a") as f:
+            # write filename then flattened 4×4 pose
+            f.write(f"{fname}\t{pose_np.flatten().tolist()}\n")
+
         results = self(batch, split='test')
         
         w, h = self.train_dataset.img_wh
@@ -305,7 +317,7 @@ class NeRFSystem(LightningModule):
         imageio.imsave(os.path.join(self.rep_dir, fname), rgb_pred)
         return None
     
-    ## tried to save images and render all together at the end
+    ## tried to save images and render all together at the end, maybe could save time
     # def test_epoch_end(self, outputs):
     #     print(f"{outputs[:2]=}")
     #     print(f"Test images saved to {self.rep_dir}")
@@ -330,7 +342,7 @@ if __name__ == '__main__':
     hparams = get_opts()
     # print(f"{hparams=}")
 
-    # clear
+    # clear cuda cache
     torch.cuda.empty_cache()
     torch.cuda.reset_peak_memory_stats()
 
@@ -338,15 +350,9 @@ if __name__ == '__main__':
         raise ValueError('You need to provide a @ckpt_path for validation!')
     system = NeRFSystem(hparams)
 
-    # ckpt_cb = ModelCheckpoint(dirpath=f'ckpts/NGPGv2_CL/{hparams.dataset_name}/{hparams.exp_name}',
-    #                           filename='{epoch:d}',
-    #                           save_weights_only=True,
-    #                           every_n_epochs=hparams.num_epochs,
-    #                           save_on_train_epoch_end=True,
-    #                           save_top_k=-1)
     ckpt_cb = ModelCheckpoint(dirpath=f'ckpts/NGPGv2_CL/{hparams.dataset_name}/{hparams.exp_name}',
                               filename='{epoch:d}',
-                              save_weights_only=False,
+                              save_weights_only=False, # was True
                               every_n_epochs=hparams.num_epochs,
                               save_on_train_epoch_end=True,
                               save_top_k=-1)
@@ -357,9 +363,9 @@ if __name__ == '__main__':
                                name=hparams.exp_name,
                                default_hp_metric=False)
 
-    # strategy = DDPPlugin(find_unused_parameters=False) if hparams.num_gpus>1 else None
+    # Use DDPStrategy for multi-GPU training
     strategy = DDPStrategy(find_unused_parameters=False) if hparams.num_gpus > 1 else None ## added
-    print(f"strategy = {strategy}")
+    # print(f"strategy = {strategy}")
 
     if hparams.task_curr != hparams.task_number - 1:
         trainer = Trainer(max_epochs=hparams.num_epochs,
@@ -400,6 +406,7 @@ if __name__ == '__main__':
     #                   save_poses=hparams.optimize_ext)
     #     torch.save(ckpt_, f'ckpts/NGPGv2_CL/{hparams.dataset_name}/{hparams.exp_name}/epoch={hparams.num_epochs-1}_slim.ckpt')
 
+    # if last training task, render rgb and depth videos
     if hparams.task_curr == (hparams.task_number -1) and (not hparams.no_save_test): # save video
         imgs = sorted(glob.glob(os.path.join(system.val_dir, '*.png')))
         imageio.mimsave(os.path.join(system.val_dir, 'rgb.mp4'),
@@ -409,8 +416,7 @@ if __name__ == '__main__':
                         [imageio.imread(img) for img in imgs[1::2]],
                         fps=30, macro_block_size=1)
 
-    # print(f"{system.test_dataset.num_workers}")
-
+    # tried to implement dual gpu for rendering
     if hparams.gpu2_render:
         # build a fresh Trainer just for rendering
         render_strategy = DDPStrategy(find_unused_parameters=False)
@@ -424,23 +430,9 @@ if __name__ == '__main__':
         )
         # render_trainer.test(system, ckpt_path=hparams.ckpt_path)
         render_trainer.test(system)
-
     else:
         if hparams.task_curr != (hparams.task_number-1):
             trainer.test(system)
-
-    # render_strategy = DDPStrategy(find_unused_parameters=False)
-    # if hparams.task_curr != (hparams.task_number -1):
-    #     # build a fresh Trainer just for rendering
-    #     render_trainer = Trainer(
-    #         accelerator='gpu',
-    #         devices=2,                         # <- force two GPUs here
-    #         strategy=render_strategy,           # reuse your DDP strategy if any
-    #         precision=16,
-    #         enable_model_summary=False,
-    #         logger=None,
-    #     )
-    #     render_trainer.test(system)
 
     print(f"Experiment : {hparams.exp_name}")
     print(f"Checkpoint saved at : {ckpt_cb.dirpath}")

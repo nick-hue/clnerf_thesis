@@ -289,7 +289,7 @@ def save_new_images(out_file, images):
 
 if __name__ == "__main__":
     # basedir = "/home/nicag/clnerf_thesis/data/counter_sm/counter_sm_merged/sparse/1/"
-    basedir = "/mnt/nas_drive/nangelidis/counter_final_final/counter_shirt_high/"
+    basedir = "/mnt/nas_drive/nangelidis/drz_single/"
     binaries_dir = os.path.join(basedir, "sparse/0/")
     # binaries_dir = "/mnt/nas_drive/nangelidis/breville"
 
@@ -311,7 +311,9 @@ if __name__ == "__main__":
     # print_names = []
     for image_id, data in images.items():
         # print(data.name.split("/")[0])
-        print(f"name: {data.name}, id: {data.id}")
+        # print(f"name: {data.name}, id: {data.id}")
+        print(data)
+        break
         # if data.name.split("/")[0] not in print_names:
         #     print(data)
         #     print_names.append(data.name.split("/")[0])
